@@ -5,12 +5,15 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+<<<<<<< HEAD
     ],
     "rewrites": [
       {
         "source": "**",
         "destination": "/index.html"
       }
+=======
+>>>>>>> 4a31ac1 (Initial Git setup and GitHub Actions config)
     ]
   }
 }
