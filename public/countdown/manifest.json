@@ -2,7 +2,7 @@
   "name": "Bhavix Countdown",
   "short_name": "Special Countdown",
   "start_url": "/countdown/",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#0f172a",
   "theme_color": "#141e30",
   "orientation": "portrait",
