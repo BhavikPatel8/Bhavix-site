@@ -37,7 +37,7 @@ body{
     font-size:20px;
     opacity:0.8;
     animation:float 6s infinite ease-in-out;
-}
+};
 
 @keyframes float{
     0%{transform:translateY(0px);}
@@ -67,11 +67,11 @@ body{
 }
 
 h1{
-    font-size:1.6rem;   /* Size reduced */
+    font-size:1.6rem;
     font-weight:700;
     margin-bottom:45px;
     letter-spacing:0.5px;
-    white-space:nowrap;   /* Force single line */
+    white-space:nowrap;
 }
 
 /* Button */
@@ -101,7 +101,7 @@ h1{
 
 <body>
 
-<!-- Floating Emojis -->
+<!-- Floating Stars -->
 <div class="star" style="top:10%; left:15%;">🌟</div>
 <div class="star" style="top:20%; right:10%; animation-delay:1s;">🌟</div>
 <div class="star" style="bottom:15%; left:20%; animation-delay:2s;">🌟</div>
@@ -126,15 +126,16 @@ const music = document.getElementById("themeMusic");
 btn.addEventListener("click", async ()=>{
 
     try{
-        await music.play(); // Mobile Safe
+        await music.play();
         music.volume = 0.7;
     }catch(e){
         console.log("Music blocked:",e);
     }
 
     setTimeout(()=>{
-        window.location.href="https://bhavix-site.web.app/countdown";
-    },300);
+        // Redirect to Firebase sub-route
+        href="https://bhavix-site.web.app/countdown/";
+    },300)
 
 });
 </script>
