@@ -1,4 +1,4 @@
-const CACHE_NAME = "bhavix-countdown-v1";
+const CACHE_NAME = "bhavix-countdown-v2";
 
 const urlsToCache = [
   "/countdown/",
