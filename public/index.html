@@ -8,6 +8,8 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
 <title>Special Countdown</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#141e30">
 
 <style>
 *{
@@ -120,6 +122,12 @@ const btn = document.getElementById("startBtn");
 btn.addEventListener("click", ()=>{
     window.location.href = "https://bhavix-site.web.app/countdown/";
 });
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/service-worker.js")
+    .then(() => console.log("Homepage SW Registered"));
+}
 </script>
 
 </body>
