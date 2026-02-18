@@ -1,6 +1,6 @@
 {
   "name": "Bhavix Countdown",
-  "short_name": "Countdown",
+  "short_name": "Special Countdown",
   "start_url": "/countdown/",
   "display": "standalone",
   "background_color": "#0f172a",
