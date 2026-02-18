@@ -1,4 +1,4 @@
-const CACHE_NAME = "bhavix-home-v1";
+const CACHE_NAME = "bhavix-home-v2";
 
 const urlsToCache = [
   "/",
