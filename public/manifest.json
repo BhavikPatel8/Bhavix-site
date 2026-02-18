@@ -2,7 +2,7 @@
   "name": "Bhavix Site",
   "short_name": "Bhavix",
   "start_url": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#141e30",
   "theme_color": "#141e30",
   "orientation": "portrait",
