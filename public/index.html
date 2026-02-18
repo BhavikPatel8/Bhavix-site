@@ -37,7 +37,7 @@ body{
     font-size:20px;
     opacity:0.8;
     animation:float 6s infinite ease-in-out;
-};
+}
 
 @keyframes float{
     0%{transform:translateY(0px);}
@@ -114,29 +114,11 @@ h1{
     <button class="start-btn" id="startBtn">Start</button>
 </div>
 
-<!-- Audio -->
-<audio id="themeMusic">
-    <source src="bgm.mp3" type="audio/mpeg">
-</audio>
-
 <script>
 const btn = document.getElementById("startBtn");
-const music = document.getElementById("themeMusic");
 
-btn.addEventListener("click", async ()=>{
-
-    try{
-        await music.play();
-        music.volume = 0.7;
-    }catch(e){
-        console.log("Music blocked:",e);
-    }
-
-    setTimeout(()=>{
-        // Redirect to Firebase sub-route
-        href="https://bhavix-site.web.app/countdown/";
-    },300)
-
+btn.addEventListener("click", ()=>{
+    window.location.href = "https://bhavix-site.web.app/countdown/";
 });
 </script>
 
