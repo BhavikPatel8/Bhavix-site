@@ -1,0 +1,46 @@
+{
+	"motd": {
+		"cloudBuildErrorAfter": 1594252800000,
+		"cloudBuildWarnAfter": 1590019200000,
+		"defaultNode10After": 1594252800000,
+		"minVersion": "3.0.5",
+		"node8DeploysDisabledAfter": 1613390400000,
+		"node8RuntimeDisabledAfter": 1615809600000,
+		"node8WarnAfter": 1600128000000,
+		"fetched": 1771326404792
+	},
+	"gemini": true,
+	"usage": true,
+	"analytics-uuid": "b29e469f-6a4a-4361-bcd2-0c8e47699860",
+	"user": {
+		"iss": "accounts.google.com",
+		"azp": "563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com",
+		"aud": "563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com",
+		"sub": "114119998100413069814",
+		"email": "bhavikpatel92652@gmail.com",
+		"email_verified": true,
+		"at_hash": "GIeAE2EZb4s09fvmuEWT2w",
+		"iat": 1769514822,
+		"exp": 1769518422
+	},
+	"tokens": {
+		"expires_at": 1771330047726,
+		"refresh_token": "1//03lHra0cy614TCgYIARAAGAMSNwF-L9IrmR3kChSN5bzeXEryrtdF6qPtIQ7euvoBgCNPU9IclgKScwv_VwdNrVex-aef2AenxC0",
+		"scopes": [],
+		"access_token": "ya29.a0ATkoCc504c7s5qWCQlR9UmE_-2c4hXsnfNt8sJfG0sVTPZ6zgpvxULoPYjh7JJK1MLulp5UpJi5lHsiO3fOYX8klUsEZsxlN58WsoVe7D8LTkf7SChfBGyI_qAqEJXZPn2UsLbrXvtZc_i-0fMkAKf-gpgJjTbA2qKgjx4IkAXS_xVrpoijXNb0OFPwCkfygWqUjBuJUqNoz-gaCgYKARASARESFQHGX2MiFBPqhx58iMrQ5IkTvB4uaw0213",
+		"expires_in": 3599,
+		"scope": "https://www.googleapis.com/auth/cloudplatformprojects.readonly https://www.googleapis.com/auth/userinfo.email openid https://www.googleapis.com/auth/firebase https://www.googleapis.com/auth/cloud-platform",
+		"token_type": "Bearer",
+		"id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImM4MTZkMzM3YjgzNjVhMDZhODUxYWQ4MDAxNmMxNzEwOTk0OTI2MDkiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJhY2NvdW50cy5nb29nbGUuY29tIiwiYXpwIjoiNTYzNTg0MzM1ODY5LWZncmhnbWQ0N2JxbmVraWo1aThiNXByMDNobzg0OWU2LmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwiYXVkIjoiNTYzNTg0MzM1ODY5LWZncmhnbWQ0N2JxbmVraWo1aThiNXByMDNobzg0OWU2LmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiMTE0MTE5OTk4MTAwNDEzMDY5ODE0IiwiZW1haWwiOiJiaGF2aWtwYXRlbDkyNjUyQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJhdF9oYXNoIjoiamNTcFI3UERSWlJfVzhZajJla2g4dyIsImlhdCI6MTc3MTMyNjQ1MCwiZXhwIjoxNzcxMzMwMDUwfQ.FokP6O69LN3XMqTuCyves7My8guqde8c_eXT4xH65G27ag-Yy2Sbs3ji-xYXK3vaglWLocrqvazwBoK-FfAmMwAU5KYh0PxRtkCYBKhCfYXLKTK602udCL33Bs3YbWCcjx7qJlZ5SFNcHJKspBr5gP8_cs6RPmPgfXM4JAhsKwNbmwID945Xe5Sljk0-rxu9u4eEe3iWX3LV9KUZplMOwlinPKPMtmMS3bRCHOU1p5liowDD3FaeVtUzj6EHdBIOFlUTVye5WjTyUIzf80JSw8qyTtMoqB6xSm0sK4NII2TSSywLrm22PaSmSLZFIaw9ZUuA6U3FBud5uYbcnZ-FXA"
+	},
+	"activeProjects": {
+		"/data/data/com.termux/files/home/bhavix-site": "bhavix-site",
+		"/data/data/com.termux/files/home": "bhavix-site"
+	},
+	"apiEnablementCache": {
+		"bhavix-site": {
+			"firebasedataconnect.googleapis.com": true,
+			"sqladmin.googleapis.com": true
+		}
+	}
+}
