@@ -1,12 +1,12 @@
 {
- "name": "Bhavix Countdown",
-  "short_name": "Special Countdown",
-  "start_url": "/countdown/",
+  "name": "Bhavix Site",
+  "short_name": "Bhavix",
+  "start_url": "/",
   "display": "fullscreen",
-  "background_color": "#0f172a",
+  "background_color": "#141e30",
   "theme_color": "#141e30",
   "orientation": "portrait",
-  "scope": "/countdown/",
+  "scope": "/",
   "icons": [
     {
       "src": "icon-192.png",
