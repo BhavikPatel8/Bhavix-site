@@ -1,4 +1,5 @@
-  "name": "Bhavix Countdown",
+{
+ "name": "Bhavix Countdown",
   "short_name": "Special Countdown",
   "start_url": "/countdown/",
   "display": "fullscreen",
