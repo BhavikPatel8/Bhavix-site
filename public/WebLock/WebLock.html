@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mine Radha Access</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Segoe UI',sans-serif;
+}
+
+body{
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:linear-gradient(135deg,#0f172a,#1e293b,#334155);
+    overflow:hidden;
+}
+
+/* Floating Glow */
+body::before{
+    content:'';
+    position:absolute;
+    width:500px;
+    height:500px;
+    background:rgba(255,255,255,0.05);
+    border-radius:50%;
+    filter:blur(120px);
+    animation:float 8s ease-in-out infinite;
+}
+
+@keyframes float{
+    50%{
+        transform:translateY(-30px);
+    }
+}
+
+.container{
+    width:380px;
+    padding:35px;
+    border-radius:24px;
+    background:rgba(255,255,255,0.08);
+    backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,0.15);
+    box-shadow:
+        0 15px 40px rgba(0,0,0,0.35),
+        0 0 30px rgba(255,255,255,0.05);
+    text-align:center;
+    animation:appear 1s ease;
+}
+
+@keyframes appear{
+    from{
+        opacity:0;
+        transform:translateY(30px);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+
+h2{
+    color:white;
+    margin-bottom:8px;
+    font-weight:600;
+}
+
+.subtitle{
+    color:#cbd5e1;
+    font-size:14px;
+    margin-bottom:25px;
+}
+
+.select-group{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+}
+
+select{
+    width:100%;
+    padding:13px;
+    border:none;
+    border-radius:12px;
+    background:rgba(255,255,255,0.1);
+    color:white;
+    font-size:15px;
+    outline:none;
+    transition:.3s;
+}
+
+select:hover{
+    background:rgba(255,255,255,0.15);
+}
+
+option{
+    color:black;
+}
+
+button{
+    width:100%;
+    margin-top:18px;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    background:linear-gradient(135deg,#60a5fa,#3b82f6);
+    color:white;
+    font-size:15px;
+    cursor:pointer;
+    transition:.3s;
+}
+
+button:hover{
+    transform:translateY(-2px);
+    box-shadow:0 10px 25px rgba(59,130,246,.4);
+}
+
+#error{
+    margin-top:15px;
+    color:#ff9f9f;
+    font-size:14px;
+}
+
+.success{
+    color:#7CFF9E !important;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h2> webLock </h2>
+    <p class="subtitle">Enter "Mine Radha.. 🌸" Birthday Date</p>
+
+    <div class="select-group">
+
+        <select id="day"></select>
+
+        <select id="month">
+            <option value="">Select Month</option>
+            <option>January</option>
+            <option>February</option>
+            <option>March</option>
+            <option>April</option>
+            <option>May</option>
+            <option>June</option>
+            <option>July</option>
+            <option>August</option>
+            <option>September</option>
+            <option>October</option>
+            <option>November</option>
+            <option>December</option>
+        </select>
+
+        <select id="year"></select>
+
+    </div>
+
+    <button onclick="checkPassword()">Unlock</button>
+
+    <p id="error"></p>
+</div>
+
+<script>
+
+// Days
+let daySelect = document.getElementById("day");
+daySelect.innerHTML = '<option value="">Select Day</option>';
+
+for(let i=1;i<=31;i++){
+    daySelect.innerHTML += `<option>${i}</option>`;
+}
+
+// Years
+let yearSelect = document.getElementById("year");
+yearSelect.innerHTML = '<option value="">Select Year</option>';
+
+for(let y=2000;y<=2026;y++){
+    yearSelect.innerHTML += `<option>${y}</option>`;
+}
+
+function checkPassword(){
+
+    const day = document.getElementById("day").value;
+    const month = document.getElementById("month").value;
+    const year = document.getElementById("year").value;
+
+    const msg = document.getElementById("error");
+
+    if(
+        day === "7" &&
+        month === "March" &&
+        year === "2007"
+    ){
+        msg.className = "success";
+        msg.innerHTML = "Access Granted ✨";
+
+        setTimeout(()=>{
+            window.location.href =
+            "https://prachuradha.weebly.com";
+        },1000);
+
+    }else{
+        msg.className = "";
+        msg.innerHTML =
+        "Incorrect Birthday Date 💔";
+    }
+}
+
+</script>
+
+</body>
+</html>
