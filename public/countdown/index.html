@@ -50,6 +50,7 @@ body{
     position:fixed;
     overscroll-behavior:none;
     background:#050b1e;
+    /* Body padding handles safe-area spacing for the UI cards, but NOT background layers */
     padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
@@ -62,6 +63,8 @@ body{
     -webkit-overflow-scrolling:touch;
     overscroll-behavior:contain;
     scroll-behavior:auto;
+    position: relative;
+    z-index: 5;
 }
 
 /* ====================================
@@ -111,23 +114,28 @@ body{
 }
 
 /* ====================================
-   BACKGROUND LAYERS
+   FIXED BACKGROUND & EFFECTS LAYERS (Full-Screen, No Padding)
 ==================================== */
 
-.background-layer{
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    z-index:0;
-    pointer-events:none;
+.fixed-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 .bg-gradient{
     position:absolute;
     width:100%;
     height:100%;
+    top: 0;
+    left: 0;
     background:linear-gradient(to bottom, #050b1e 0%, #0f1a2f 50%, #1a2d4a 100%);
 }
 
@@ -205,20 +213,20 @@ body.music-active .orb3{
     50%{ transform:scale(1.2); filter:blur(100px); }
 }
 
-/* Particle System */
+/* Particle System Layer */
 .particles{
-    position:fixed;
+    position:absolute;
     width:100%;
     height:100%;
     top:0;
     left:0;
-    z-index:1;
     pointer-events:none;
     opacity:0.6;
 }
 
 .particle{
     position:absolute;
+    bottom:-10px; /* Force starts below screen */
     width:3px;
     height:3px;
     background:#fff;
@@ -230,17 +238,16 @@ body.music-active .orb3{
     0%{ transform:translateY(0) translateX(0); opacity:0; }
     10%{ opacity:1; }
     90%{ opacity:1; }
-    100%{ transform:translateY(-100vh) translateX(50px); opacity:0; }
+    100%{ transform:translateY(-110vh) translateX(50px); opacity:0; }
 }
 
-/* Stars */
+/* Stars Layer */
 .stars{
-    position:fixed;
+    position:absolute;
     width:100%;
     height:100%;
     top:0;
     left:0;
-    z-index:1;
     pointer-events:none;
 }
 
@@ -259,7 +266,16 @@ body.music-active .orb3{
     50%{ opacity:0.2; transform:scale(0.8); }
 }
 
-/* Snowfall */
+/* Snowfall Layer */
+#snowfall {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+
 .snowflake{
     position:absolute;
     top:-20px;
@@ -275,12 +291,11 @@ body.music-active .orb3{
 }
 
 /* ====================================
-   APP CONTENT
+   APP CONTENT (Aligned on top of background)
 ==================================== */
 
 .app-container{
     position:relative;
-    z-index:5;
     width:100%;
     min-height:100%;
     display:flex;
@@ -594,6 +609,7 @@ h1{
     transition:all 0.3s ease;
     border:1px solid rgba(255,255,255,0.2);
     padding:0 14px;
+    touch-action: manipulation;
 }
 
 .control-btn:active{
@@ -675,103 +691,103 @@ h1{
     <div class="loading-text">Loading Music Player...</div>
 </div>
 
-<!-- Scroll Container -->
-<div class="scroll-container">
-
-<!-- Background Layers -->
-<div class="background-layer">
+<!-- Fixed Master Background Container (Fully Isolated from safe-areas and padding) -->
+<div class="fixed-background">
     <div class="bg-gradient"></div>
     <div class="orb orb1"></div>
     <div class="orb orb2"></div>
     <div class="orb orb3"></div>
+    
+    <!-- Particles -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Stars -->
+    <div class="stars" id="stars"></div>
+
+    <!-- Snowfall -->
+    <div id="snowfall"></div>
 </div>
 
-<!-- Particles -->
-<div class="particles" id="particles"></div>
+<!-- Scroll Container for app UI cards -->
+<div class="scroll-container">
 
-<!-- Stars -->
-<div class="stars" id="stars"></div>
+    <!-- App Container -->
+    <div class="app-container">
 
-<!-- Snowfall -->
-<div id="snowfall"></div>
+        <!-- Countdown Container -->
+        <div class="countdown-container">
+            <h1>❄️ December 2026 ❄️</h1>
+            <div class="subtitle">Limited Time Left - Grow Yourself!</div>
 
-<!-- App Container -->
-<div class="app-container">
-
-    <!-- Countdown Container -->
-    <div class="countdown-container">
-        <h1>❄️ December 2026 ❄️</h1>
-        <div class="subtitle">Limited Time Left - Grow Yourself!</div>
-
-        <div class="countdown-grid">
-            <div class="time-unit">
-                <div class="time-value" id="days">000</div>
-                <div class="time-label">Days</div>
+            <div class="countdown-grid">
+                <div class="time-unit">
+                    <div class="time-value" id="days">000</div>
+                    <div class="time-label">Days</div>
+                </div>
+                <div class="time-unit">
+                    <div class="time-value" id="months">00</div>
+                    <div class="time-label">Months</div>
+                </div>
+                <div class="time-unit">
+                    <div class="time-value" id="hours">00</div>
+                    <div class="time-label">Hours</div>
+                </div>
+                <div class="time-unit">
+                    <div class="time-value" id="minutes">00</div>
+                    <div class="time-label">Minutes</div>
+                </div>
+                <div class="time-unit">
+                    <div class="time-value" id="seconds">00</div>
+                    <div class="time-label">Seconds</div>
+                </div>
             </div>
-            <div class="time-unit">
-                <div class="time-value" id="months">00</div>
-                <div class="time-label">Months</div>
-            </div>
-            <div class="time-unit">
-                <div class="time-value" id="hours">00</div>
-                <div class="time-label">Hours</div>
-            </div>
-            <div class="time-unit">
-                <div class="time-value" id="minutes">00</div>
-                <div class="time-label">Minutes</div>
-            </div>
-            <div class="time-unit">
-                <div class="time-value" id="seconds">00</div>
-                <div class="time-label">Seconds</div>
+
+            <div class="milliseconds-section">
+                <div class="milliseconds-value" id="msdot">00.000</div>
+                <div class="milliseconds-label">Seconds.MS</div>
             </div>
         </div>
 
-        <div class="milliseconds-section">
-            <div class="milliseconds-value" id="msdot">00.000</div>
-            <div class="milliseconds-label">Seconds.MS</div>
+        <!-- Music Player -->
+        <div class="music-player" id="musicPlayer">
+            
+            <!-- Loading Indicator -->
+            <div class="music-loading" id="musicLoading">
+                <div class="music-loading-spinner"></div>
+                <div class="music-loading-text">Loading Track...</div>
+            </div>
+
+            <div class="special-mode" id="specialMode" style="display:none;">
+                Final Countdown - Last 3 Days Special Theme Active
+            </div>
+
+            <div class="music-header">
+                <div class="music-title" id="musicTitle">WinterLand(FF)_Theme</div>
+                <div class="music-subtitle" id="musicSubtitle">Track 1 of 22</div>
+            </div>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+
+            <div class="time-display">
+                <span id="currentTime">0:00</span>
+                <span id="duration">0:00</span>
+            </div>
+
+            <div class="player-controls">
+                <button class="control-btn play-pause-btn" id="playPauseBtn">▶</button>
+                <button class="control-btn next-btn" id="nextBtn">Next</button>
+            </div>
+
+            <div class="status-indicator">
+                <div class="status-dot" id="dot1"></div>
+                <div class="status-dot" id="dot2"></div>
+                <div class="status-dot" id="dot3"></div>
+            </div>
         </div>
+
     </div>
-
-    <!-- Music Player -->
-    <div class="music-player" id="musicPlayer">
-        
-        <!-- Loading Indicator -->
-        <div class="music-loading" id="musicLoading">
-            <div class="music-loading-spinner"></div>
-            <div class="music-loading-text">Loading Track...</div>
-        </div>
-
-        <div class="special-mode" id="specialMode" style="display:none;">
-            Final Countdown - Last 3 Days Special Theme Active
-        </div>
-
-        <div class="music-header">
-            <div class="music-title" id="musicTitle">WinterLand(FF)_Theme</div>
-            <div class="music-subtitle" id="musicSubtitle">Track 1 of 22</div>
-        </div>
-
-        <div class="progress-container" id="progressContainer">
-            <div class="progress-bar" id="progressBar"></div>
-        </div>
-
-        <div class="time-display">
-            <span id="currentTime">0:00</span>
-            <span id="duration">0:00</span>
-        </div>
-
-        <div class="player-controls">
-            <button class="control-btn play-pause-btn" id="playPauseBtn">▶</button>
-            <button class="control-btn next-btn" id="nextBtn">Next</button>
-        </div>
-
-        <div class="status-indicator">
-            <div class="status-dot" id="dot1"></div>
-            <div class="status-dot" id="dot2"></div>
-            <div class="status-dot" id="dot3"></div>
-        </div>
-    </div>
-
-</div>
 
 </div>
 
@@ -876,28 +892,28 @@ updateCountdown();
 // MUSIC LIBRARY
 // ====================================
 const musicLibrary = [
-    "1. WinterLand(FF)_Theme.mp3",
-    "2. TheWolfAndTheMoon_Theme.mp3 ",
-    "3. LavidadeRaquel_Theme.mp3",
-    "4. RaquelySergioJuntos_Theme.mp3",
-    "5. Game of Thrones_Theme.mp3",
-    "6. Senya(Naruto)_Theme.mp3",
-    "7. Without Love(VinlandSaga)_Theme.mp3",
-    "8. River(VinlandSaga)_Theme.mp3",
-    "9. BaahuBaliOST_Theme.mp3",
-    "10. Shivam(BahuBali2)_Theme.mp3 ",
-    "11. Bahubali2(Ending)_Theme.mp3",
-    "12. VandeMatram(ABCD)_Theme.mp3",
-    "13. BandeHainBumUske(Dhoom3)_Theme.mp3",
-    "14. BEZUBAANphirse_Theme.mp3",
-    "15. CallOfSilence_Theme.mp3",
-    "16. Kato(Naruto)_Theme.mp3",
-    "17. SadnessandSorrow(Naruto)_Theme.mp3",
-    "18. @KrishnaKrishna_Theme(kurukshetra).mp3",
-    "19. Kadalalle(DearComrade)_Theme.mp3",
-    "20. @Aladdin-Naam-Toh-Suna-Hoga(Yashmin•title)_Theme.mp3",
-    "21. MyHeartWillGoOn(Titanic)_Theme.mp3",
-    "22. @ThemeOfRADHA.mp3"
+    "1. WinterLand(FF)_Theme.mp3",
+    "2. TheWolfAndTheMoon_Theme.mp3 ",
+    "3. LavidadeRaquel_Theme.mp3",
+    "4. RaquelySergioJuntos_Theme.mp3",
+    "5. Game of Thrones_Theme.mp3",
+    "6. Senya(Naruto)_Theme.mp3",
+    "7. Without Love(VinlandSaga)_Theme.mp3",
+    "8. River(VinlandSaga)_Theme.mp3",
+    "9. BaahuBaliOST_Theme.mp3",
+    "10. Shivam(BahuBali2)_Theme.mp3 ",
+    "11. Bahubali2(Ending)_Theme.mp3",
+    "12. VandeMatram(ABCD)_Theme.mp3",
+    "13. BandeHainBumUske(Dhoom3)_Theme.mp3",
+    "14. BEZUBAANphirse_Theme.mp3",
+    "15. CallOfSilence_Theme.mp3",
+    "16. Kato(Naruto)_Theme.mp3",
+    "17. SadnessandSorrow(Naruto)_Theme.mp3",
+    "18. @KrishnaKrishna_Theme(kurukshetra).mp3",
+    "19. Kadalalle(DearComrade)_Theme.mp3",
+    "20. @Aladdin-Naam-Toh-Suna-Hoga(Yashmin•title)_Theme.mp3",
+    "21. MyHeartWillGoOn(Titanic)_Theme.mp3",
+    "22. @ThemeOfRADHA.mp3"
 ];
 
 // ====================================
