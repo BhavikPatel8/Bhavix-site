@@ -49,94 +49,27 @@ body{
     overflow:hidden;
     position:fixed;
     overscroll-behavior:none;
-    background:#050b1e;
-    /* Body padding handles safe-area spacing for the UI cards, but NOT background layers */
+    
+    /* FIX 1: Gradient direct body par apply kiya hai, ab isse koi doosra layer hide nahi kar sakta */
+    background: linear-gradient(to bottom, #050b1e 0%, #0f1a2f 50%, #1a2d4a 100%);
+    
     padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
-/* Scroll Container */
-.scroll-container{
-    width:100%;
-    height:100%;
-    overflow-x:hidden;
-    overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
-    overscroll-behavior:contain;
-    scroll-behavior:auto;
-    position: relative;
-    z-index: 5;
-}
-
 /* ====================================
-   LOADING SCREEN
+   BACKGROUND & EFFECTS LAYERS (Full-Screen, No Padding)
 ==================================== */
 
-.loading-screen{
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    background:linear-gradient(to bottom, #050b1e 0%, #0f1a2f 50%, #1a2d4a 100%);
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    z-index:9999;
-    transition:opacity 0.5s ease, visibility 0.5s ease;
-}
-
-.loading-screen.hidden{
-    opacity:0;
-    visibility:hidden;
-    pointer-events:none;
-}
-
-.loader{
-    width:50px;
-    height:50px;
-    border:4px solid rgba(255,255,255,0.1);
-    border-top:4px solid #667eea;
-    border-radius:50%;
-    animation:spin 1s linear infinite;
-}
-
-@keyframes spin{
-    0%{ transform:rotate(0deg); }
-    100%{ transform:rotate(360deg); }
-}
-
-.loading-text{
-    margin-top:20px;
-    color:#a8d8ff;
-    font-size:0.9em;
-    letter-spacing:1px;
-}
-
-/* ====================================
-   FIXED BACKGROUND & EFFECTS LAYERS (Full-Screen, No Padding)
-==================================== */
-
-.fixed-background {
+/* FIX 2: Background effects layer ka positive z-index: 1 set kiya hai */
+.background-layer {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; 
     pointer-events: none;
     overflow: hidden;
-    padding: 0 !important;
-    margin: 0 !important;
-}
-
-.bg-gradient{
-    position:absolute;
-    width:100%;
-    height:100%;
-    top: 0;
-    left: 0;
-    background:linear-gradient(to bottom, #050b1e 0%, #0f1a2f 50%, #1a2d4a 100%);
 }
 
 /* Animated Gradient Orbs */
@@ -226,7 +159,7 @@ body.music-active .orb3{
 
 .particle{
     position:absolute;
-    bottom:-10px; /* Force starts below screen */
+    bottom:-10px; /* Starts below screen viewport */
     width:3px;
     height:3px;
     background:#fff;
@@ -291,7 +224,70 @@ body.music-active .orb3{
 }
 
 /* ====================================
-   APP CONTENT (Aligned on top of background)
+   SCROLL CONTAINER (Aligned on top of background)
+==================================== */
+
+/* FIX 3: Scroll container ko z-index: 2 kiya hai background layer ke upar render hone ke liye */
+.scroll-container{
+    position: relative;
+    z-index: 2; 
+    width:100%;
+    height:100%;
+    overflow-x:hidden;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    scroll-behavior:auto;
+}
+
+/* ====================================
+   LOADING SCREEN
+==================================== */
+
+.loading-screen{
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:linear-gradient(to bottom, #050b1e 0%, #0f1a2f 50%, #1a2d4a 100%);
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    z-index:9999;
+    transition:opacity 0.5s ease, visibility 0.5s ease;
+}
+
+.loading-screen.hidden{
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+}
+
+.loader{
+    width:50px;
+    height:50px;
+    border:4px solid rgba(255,255,255,0.1);
+    border-top:4px solid #667eea;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+}
+
+@keyframes spin{
+    0%{ transform:rotate(0deg); }
+    100%{ transform:rotate(360deg); }
+}
+
+.loading-text{
+    margin-top:20px;
+    color:#a8d8ff;
+    font-size:0.9em;
+    letter-spacing:1px;
+}
+
+/* ====================================
+   APP CONTENT
 ==================================== */
 
 .app-container{
@@ -691,9 +687,8 @@ h1{
     <div class="loading-text">Loading Music Player...</div>
 </div>
 
-<!-- Fixed Master Background Container (Fully Isolated from safe-areas and padding) -->
-<div class="fixed-background">
-    <div class="bg-gradient"></div>
+<!-- FIX 4: Background container with positive z-index: 1 to prevent WebView rendering overlay bugs -->
+<div class="background-layer">
     <div class="orb orb1"></div>
     <div class="orb orb2"></div>
     <div class="orb orb3"></div>
@@ -708,7 +703,7 @@ h1{
     <div id="snowfall"></div>
 </div>
 
-<!-- Scroll Container for app UI cards -->
+<!-- Scroll Container for app UI cards (Layered securely on top) -->
 <div class="scroll-container">
 
     <!-- App Container -->
@@ -805,7 +800,7 @@ let isSpecialMode = false;
 let isLoading = false;
 
 // ====================================
-// PARTICLES
+// PARTICLES (Percentage-based viewport rendering)
 // ====================================
 const particlesContainer = document.getElementById("particles");
 for(let i = 0; i < 30; i++){
@@ -818,7 +813,7 @@ for(let i = 0; i < 30; i++){
 }
 
 // ====================================
-// STARS
+// STARS (Percentage-based coordinates for WebView stability)
 // ====================================
 const starsContainer = document.getElementById("stars");
 for(let i = 0; i < 100; i++){
