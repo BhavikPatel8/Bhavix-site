@@ -2,12 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
 <title>Bhavix-Site</title> 
-
-    
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap" rel="stylesheet">
 <link rel="manifest" href="/manifest.json">
@@ -34,38 +31,70 @@ html{
 body{
     width:100%;
     height:100%;
-
     background:linear-gradient(135deg,#141e30,#243b55);
     background-attachment:fixed;
-
     display:flex;
     justify-content:center;
     align-items:center;
-
     overflow:hidden;
     color:white;
+    position:relative;
 }
 
-/* Floating Stars */
-.star{
+/* Fixed Background Container to prevent stars from sticking to the top */
+.background-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none; /* Inactive to clicks so it doesn't block the button */
+    overflow: hidden;
+}
+
+/* Floating Emoji Stars */
+.star-emoji{
     position:absolute;
-    font-size:20px;
-    opacity:0.8;
+    font-size:22px;
+    opacity:0.85;
     animation:float 6s infinite ease-in-out;
 }
 
-@keyframes float{
-    0%{transform:translateY(0px);}
-    50%{transform:translateY(-20px);}
-    100%{transform:translateY(0px);}
+/* Tiny dynamic stars/snowflakes */
+.tiny-star {
+    position: absolute;
+    background-color: #ffffff;
+    border-radius: 50%;
+    pointer-events: none;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+    animation: shimmer infinite ease-in-out;
 }
 
-/* Card */
+@keyframes float{
+    0% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(15deg); }
+    100% { transform: translateY(0px) rotate(0deg); }
+}
+
+@keyframes shimmer {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+        opacity: 0.3;
+    }
+    50% {
+        transform: translateY(-15px) scale(1.2);
+        opacity: 1;
+    }
+}
+
+/* Card centering */
 .card{
     position:relative;
     z-index:2;
     background:rgba(255,255,255,0.08);
     backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
     padding:60px 35px;
     border-radius:30px;
     text-align:center;
@@ -101,6 +130,7 @@ h1{
     color:white;
     box-shadow:0 10px 30px rgba(255,94,98,0.5);
     transition:0.3s;
+    touch-action: manipulation;
 }
 
 .start-btn:hover{
@@ -116,13 +146,16 @@ h1{
 
 <body>
 
-<!-- Floating Stars -->
-<div class="star" style="top:10%; left:15%;">🌟</div>
-<div class="star" style="top:20%; right:10%; animation-delay:1s;">🌟</div>
-<div class="star" style="bottom:15%; left:20%; animation-delay:2s;">🌟</div>
-<div class="star" style="bottom:25%; right:15%; animation-delay:3s;">🌟</div>
-<div class="star" style="top:50%; left:5%; animation-delay:1.5s;">🌟</div>
-<div class="star" style="top:60%; right:5%; animation-delay:2.5s;">🌟</div>
+<!-- All Stars & Snow elements are now in this isolated fixed background layer -->
+<div class="background-container" id="bgContainer">
+    <!-- Manual Emoji Stars positioned safely relative to the screen -->
+    <div class="star-emoji" style="top:10%; left:15%;">🌟</div>
+    <div class="star-emoji" style="top:25%; right:12%; animation-delay:1s;">🌟</div>
+    <div class="star-emoji" style="bottom:18%; left:15%; animation-delay:2s;">🌟</div>
+    <div class="star-emoji" style="bottom:28%; right:15%; animation-delay:3s;">🌟</div>
+    <div class="star-emoji" style="top:52%; left:8%; animation-delay:1.5s;">🌟</div>
+    <div class="star-emoji" style="top:62%; right:8%; animation-delay:2.5s;">🌟</div>
+</div>
 
 <div class="card">
     <h1>Special Countdown ✨</h1>
@@ -135,13 +168,49 @@ const btn = document.getElementById("startBtn");
 btn.addEventListener("click", ()=>{
     window.location.href = "https://bhavix-site.web.app/countdown/";
 });
+
+// Dynamic tiny stars/snow generator for fully organic distribution
+function generateSnowfield() {
+    const container = document.getElementById('bgContainer');
+    const starCount = 35; // Ideal quantity for mobile webview performance
+
+    for (let i = 0; i < starCount; i++) {
+        const star = document.createElement('div');
+        star.classList.add('tiny-star');
+        
+        // Randomly scatter positions across the viewport 100% safely
+        const x = Math.random() * 100;
+        const y = Math.random() * 100;
+        
+        // Varying sizes to create depth (like snowfall in screenshots)
+        const size = Math.random() * 3 + 1.5;
+        const opacity = Math.random() * 0.7 + 0.3;
+        const delay = Math.random() * 5;
+        const duration = Math.random() * 4 + 4; // Floating speed (4s - 8s)
+        
+        star.style.left = `${x}%`;
+        star.style.top = `${y}%`;
+        star.style.width = `${size}px`;
+        star.style.height = `${size}px`;
+        star.style.opacity = opacity;
+        star.style.animationDelay = `${delay}s`;
+        star.style.animationDuration = `${duration}s`;
+        
+        container.appendChild(star);
+    }
+}
+
+// Initialize stars generation on load
+window.addEventListener('DOMContentLoaded', generateSnowfield);
 </script>
+
 <script>
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/service-worker.js")
     .then(() => console.log("Homepage SW Registered"));
 }
 </script>
+
 <script>
 function fixViewportHeight() {
     document.body.style.height = window.innerHeight + "px";
