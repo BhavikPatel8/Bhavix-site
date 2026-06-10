@@ -1,385 +1,375 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="theme-color" content="#0f172a">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>webLock Access</title>
-<style>
+    <meta charset="UTF-8">
+    <meta name="theme-color" content="#0f172a">
+    <!-- Adjusted viewport to prevent unwanted zooming on mobile input -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <title>webLock Access</title>
+    <style>
+        * {    
+            margin: 0;    
+            padding: 0;    
+            box-sizing: border-box;    
+            font-family: 'Segoe UI', sans-serif;    
+            -webkit-tap-highlight-color: transparent;
+        }
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Segoe UI', sans-serif;
-    -webkit-tap-highlight-color: transparent;
-}
+        html {    
+            width: 100%;    
+            height: 100%;    
+            overflow: hidden;    
+        }
 
-html {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    /* FIX 1: position:fixed hataaya — WebView ke saath double-offset nahi hoga */
-}
+        body {    
+            width: 100%;    
+            height: 100%;
+            display: flex;    
+            justify-content: center;    
+            align-items: center;
+            background-color: #0f172a;    
+            background-image: linear-gradient(135deg, #0f172a, #1e293b, #334155);    
+            background-attachment: fixed; 
 
-body {
-    width: 100%;
-    height: 100%;
+            padding-top: env(safe-area-inset-top, 20px);    
+            padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px);    
+            padding-left: max(env(safe-area-inset-left, 0px), 20px);    
+            padding-right: max(env(safe-area-inset-right, 0px), 20px);
 
-    display: flex;
-    justify-content: center;
-    align-items: center;
+            position: relative;    
+            overflow: hidden;    
+            
+            /* WebView UI Fix: Prevents text selection on rapid tapping */
+            -webkit-user-select: none;
+            user-select: none;
+        }
 
-    background-color: #0f172a;
-    background-image: linear-gradient(135deg, #0f172a, #1e293b, #334155);
-    background-attachment: fixed; /* gradient scroll ke saath nahi hilega */
+        /* Floating Glow */
+        body::before {    
+            content: '';    
+            position: fixed;    
+            top: 50%;    
+            left: 50%;    
+            transform: translate(-50%, -50%);    
+            width: min(500px, 80vw);    
+            height: min(500px, 80vw);    
+            background: rgba(96, 165, 250, 0.08);    
+            border-radius: 50%;    
+            filter: blur(120px);    
+            pointer-events: none;    
+            z-index: 0;
+        }
 
-    /* FIX 2: safe-area padding — MainActivity mein statusBarsPadding() NAHI hai
-       toh yahan sirf ek baar env() se handle karo */
-    padding-top: env(safe-area-inset-top, 20px);
-    padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px);
-    padding-left: max(env(safe-area-inset-left, 0px), 20px);
-    padding-right: max(env(safe-area-inset-right, 0px), 20px);
+        .container {    
+            position: relative;    
+            z-index: 1;
+            width: 100%;    
+            max-width: 380px;
+            margin: auto;
+            padding: 35px;    
+            border-radius: 24px;
+            background: rgba(15, 23, 42, 0.85);    
+            backdrop-filter: blur(20px);    
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);    
+            box-shadow:        
+                0 15px 40px rgba(0, 0, 0, 0.5),        
+                0 0 30px rgba(96, 165, 250, 0.08);
+            text-align: center;
+        }
 
-    position: relative;
-    overflow: hidden;
-    
-}
+        h2 {    
+            color: #ffffff;    
+            margin-bottom: 8px;    
+            font-weight: 600;    
+            font-size: 22px;    
+            letter-spacing: 0.5px;
+        }
 
-/* Floating Glow */
-body::before {
-    content: '';
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: min(500px, 80vw);
-    height: min(500px, 80vw);
-    background: rgba(96, 165, 250, 0.08);
-    border-radius: 50%;
-    filter: blur(120px);
-    pointer-events: none;
-    z-index: 0;
-}
+        .subtitle {    
+            color: #cbd5e1;    
+            font-size: 14px;    
+            margin-bottom: 25px;
+        }
 
-.container {
-    position: relative;
-    z-index: 1;
+        /* Pattern Display */
+        .pattern-display {    
+            display: flex;    
+            justify-content: center;    
+            align-items: center;    
+            gap: 12px;    
+            margin-bottom: 30px;    
+            height: 50px;
+        }
 
-    width: 100%;
-    max-width: 380px;
+        .pattern-dot {    
+            width: 14px;    
+            height: 14px;    
+            border-radius: 50%;    
+            background: rgba(255, 255, 255, 0.2);    
+            border: 1.5px solid rgba(255, 255, 255, 0.4);    
+            transition: all 0.25s ease;
+        }
 
-    /* FIX 3: margin:auto — body flex ke saath poora center rahega */
-    margin: auto;
+        .pattern-dot.filled {    
+            background: rgba(96, 165, 250, 0.9);    
+            border-color: rgba(96, 165, 250, 1);    
+            box-shadow: 0 0 12px rgba(96, 165, 250, 0.7);    
+            transform: scale(1.2);
+        }
 
-    padding: 35px;
-    border-radius: 24px;
+        /* Number Pad */
+        .number-pad {    
+            display: grid;    
+            grid-template-columns: repeat(3, 1fr);    
+            gap: 12px;    
+            margin-bottom: 20px;
+        }
 
-    /* FIX 4: Android WebView mein backdrop-filter kabhi kabhi kaam nahi karta —
-       solid fallback background pehle, phir blur upar se */
-    background: rgba(15, 23, 42, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+        .number-btn {    
+            width: 100%;    
+            aspect-ratio: 1;    
+            padding: 0;
+            border: 1px solid rgba(255, 255, 255, 0.18);    
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;    
+            font-size: 20px;    
+            font-weight: 600;
+            cursor: pointer;    
+            transition: all 0.15s ease;
+            display: flex;    
+            justify-content: center;    
+            align-items: center;
+            outline: none;    
+            min-height: 52px;
+            
+            /* WebView UI Fix: Prevents delay and selection popups */
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+        }
 
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow:
-        0 15px 40px rgba(0, 0, 0, 0.5),
-        0 0 30px rgba(96, 165, 250, 0.08);
+        .number-btn:active {    
+            transform: scale(0.93);    
+            background: rgba(96, 165, 250, 0.25);    
+            border-color: rgba(96, 165, 250, 0.6);
+        }
 
-    text-align: center;
-}
+        /* Action Buttons */
+        .action-buttons {    
+            display: flex;    
+            gap: 10px;    
+            margin-bottom: 15px;
+        }
 
-h2 {
-    color: #ffffff;
-    margin-bottom: 8px;
-    font-weight: 600;
-    font-size: 22px;
-    letter-spacing: 0.5px;
-}
+        .action-btn {    
+            flex: 1;    
+            padding: 14px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.18);    
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;    
+            font-size: 14px;    
+            font-weight: 500;
+            cursor: pointer;    
+            transition: all 0.15s ease;    
+            outline: none;
+            min-height: 48px;
+            
+            /* WebView UI Fix: Prevents delay and selection popups */
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+        }
 
-.subtitle {
-    color: #cbd5e1;
-    font-size: 14px;
-    margin-bottom: 25px;
-}
+        .action-btn:active {    
+            transform: scale(0.97);
+        }
 
-/* Pattern Display */
-.pattern-display {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 30px;
-    height: 50px;
-}
+        .clear-btn:active {    
+            background: rgba(239, 68, 68, 0.3);    
+            border-color: rgba(239, 68, 68, 0.5);
+        }
 
-.pattern-dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2);
-    border: 1.5px solid rgba(255, 255, 255, 0.4);
-    transition: all 0.25s ease;
-}
+        .submit-btn:active {    
+            background: rgba(96, 165, 250, 0.3);    
+            border-color: rgba(96, 165, 250, 0.5);
+        }
 
-.pattern-dot.filled {
-    background: rgba(96, 165, 250, 0.9);
-    border-color: rgba(96, 165, 250, 1);
-    box-shadow: 0 0 12px rgba(96, 165, 250, 0.7);
-    transform: scale(1.2);
-}
+        .submit-btn {    
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.25), rgba(139, 92, 246, 0.25));    
+            border-color: rgba(96, 165, 250, 0.4);
+        }
 
-/* Number Pad */
-.number-pad {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
-}
+        #error {    
+            margin-top: 12px;    
+            color: #ff9f9f;    
+            font-size: 14px;    
+            min-height: 22px;    
+            transition: all 0.3s ease;
+        }
 
-.number-btn {
-    width: 100%;
-    aspect-ratio: 1;
-    padding: 0;
+        .success {    
+            color: #7cff9e !important;
+        }
 
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 14px;
+        /* Shake Animation */
+        .shake {    
+            animation: shake 0.45s ease;
+        }
 
-    /* FIX 5: solid fallback + blur */
-    background: rgba(255, 255, 255, 0.08);
+        @keyframes shake {    
+            0%, 100% { transform: translateX(0); }    
+            20%       { transform: translateX(-8px); }    
+            40%       { transform: translateX(8px); }    
+            60%       { transform: translateX(-5px); }    
+            80%       { transform: translateX(5px); }
+        }
 
-    color: #ffffff;
-    font-size: 20px;
-    font-weight: 600;
+        /* Responsive Modifications */
+        @media (max-width: 400px) {    
+            .container {        
+                padding: 24px 20px;    
+            }    
+            .number-btn {        
+                font-size: 18px;    
+            }
+        }
 
-    cursor: pointer;
-    transition: all 0.15s ease;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    outline: none;
-    /* FIX 6: touch ke liye min size — 48px Android accessibility guideline */
-    min-height: 52px;
-}
-
-.number-btn:active {
-    transform: scale(0.93);
-    background: rgba(96, 165, 250, 0.25);
-    border-color: rgba(96, 165, 250, 0.6);
-}
-
-/* Action Buttons */
-.action-buttons {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.action-btn {
-    flex: 1;
-    padding: 14px 12px;
-
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 12px;
-
-    background: rgba(255, 255, 255, 0.08);
-
-    color: #ffffff;
-    font-size: 14px;
-    font-weight: 500;
-
-    cursor: pointer;
-    transition: all 0.15s ease;
-    outline: none;
-
-    min-height: 48px;
-}
-
-.action-btn:active {
-    transform: scale(0.97);
-}
-
-.clear-btn:active {
-    background: rgba(239, 68, 68, 0.3);
-    border-color: rgba(239, 68, 68, 0.5);
-}
-
-.submit-btn:active {
-    background: rgba(96, 165, 250, 0.3);
-    border-color: rgba(96, 165, 250, 0.5);
-}
-
-/* FIX 7: Unlock button — prominent gradient */
-.submit-btn {
-    background: linear-gradient(135deg, rgba(96, 165, 250, 0.25), rgba(139, 92, 246, 0.25));
-    border-color: rgba(96, 165, 250, 0.4);
-}
-
-#error {
-    margin-top: 12px;
-    color: #ff9f9f;
-    font-size: 14px;
-    min-height: 22px;
-    transition: all 0.3s ease;
-}
-
-.success {
-    color: #7cff9e !important;
-}
-
-/* Shake Animation */
-.shake {
-    animation: shake 0.45s ease;
-}
-
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    20%       { transform: translateX(-8px); }
-    40%       { transform: translateX(8px); }
-    60%       { transform: translateX(-5px); }
-    80%       { transform: translateX(5px); }
-}
-
-/* ============================
-   RESPONSIVE
-============================ */
-@media (max-width: 400px) {
-    .container {
-        padding: 24px 20px;
-    }
-    .number-btn {
-        font-size: 18px;
-    }
-}
-
-/* FIX 8: Agar screen bahut choti ho (landscape phone) */
-@media (max-height: 600px) {
-    .pattern-display {
-        margin-bottom: 16px;
-        height: 36px;
-    }
-    .number-pad {
-        gap: 8px;
-        margin-bottom: 12px;
-    }
-    .container {
-        padding: 20px;
-    }
-    h2 {
-        margin-bottom: 4px;
-    }
-    .subtitle {
-        margin-bottom: 14px;
-    }
-}
-
-</style>
+        @media (max-height: 600px) {    
+            .pattern-display {        
+                margin-bottom: 16px;        
+                height: 36px;    
+            }    
+            .number-pad {        
+                gap: 8px;        
+                margin-bottom: 12px;    
+            }    
+            .container {        
+                padding: 20px;    
+            }    
+            h2 {        
+                margin-bottom: 4px;    
+            }    
+            .subtitle {        
+                margin-bottom: 14px;    
+            }
+        }
+    </style>
 </head>
-
 <body>
 
-<div class="container" id="mainContainer">
-    <h2>webLock 🔐</h2>
+<div class="container" id="mainContainer">    
+    <h2>webLock 🔐</h2>    
     <p class="subtitle">Enter Pattern to Unlock</p>
 
-    <!-- Pattern Display -->
-    <div class="pattern-display">
-        <div class="pattern-dot"></div>
-        <div class="pattern-dot"></div>
-        <div class="pattern-dot"></div>
-        <div class="pattern-dot"></div>
+    <!-- Pattern Display -->    
+    <div class="pattern-display">        
+        <div class="pattern-dot"></div>        
+        <div class="pattern-dot"></div>        
+        <div class="pattern-dot"></div>        
+        <div class="pattern-dot"></div>    
     </div>
 
-    <!-- Number Pad -->
-    <div class="number-pad">
-        <button class="number-btn" onclick="addToPattern('1')">1</button>
-        <button class="number-btn" onclick="addToPattern('2')">2</button>
-        <button class="number-btn" onclick="addToPattern('3')">3</button>
-        <button class="number-btn" onclick="addToPattern('4')">4</button>
-        <button class="number-btn" onclick="addToPattern('5')">5</button>
-        <button class="number-btn" onclick="addToPattern('6')">6</button>
-        <button class="number-btn" onclick="addToPattern('7')">7</button>
-        <button class="number-btn" onclick="addToPattern('8')">8</button>
-        <button class="number-btn" onclick="addToPattern('9')">9</button>
+    <!-- Number Pad -->    
+    <div class="number-pad">        
+        <button class="number-btn" onclick="addToPattern('1')">1</button>        
+        <button class="number-btn" onclick="addToPattern('2')">2</button>        
+        <button class="number-btn" onclick="addToPattern('3')">3</button>        
+        <button class="number-btn" onclick="addToPattern('4')">4</button>        
+        <button class="number-btn" onclick="addToPattern('5')">5</button>        
+        <button class="number-btn" onclick="addToPattern('6')">6</button>        
+        <button class="number-btn" onclick="addToPattern('7')">7</button>        
+        <button class="number-btn" onclick="addToPattern('8')">8</button>        
+        <button class="number-btn" onclick="addToPattern('9')">9</button>    
     </div>
 
-    <!-- Action Buttons -->
-    <div class="action-buttons">
-        <button class="action-btn clear-btn" onclick="clearPattern()">Clear</button>
-        <button class="action-btn submit-btn" onclick="checkPattern()">Unlock</button>
+    <!-- Action Buttons -->    
+    <div class="action-buttons">        
+        <button class="action-btn clear-btn" onclick="clearPattern()">Clear</button>        
+        <button class="action-btn submit-btn" onclick="checkPattern()">Unlock</button>    
     </div>
 
     <p id="error"></p>
 </div>
 
 <script>
+    function fixViewportHeight() {    
+        document.body.style.height = window.innerHeight + "px";
+    }
 
- function fixViewportHeight() {
-    document.body.style.height = window.innerHeight + "px";
-}
+    window.addEventListener("load", fixViewportHeight);
+    window.addEventListener("resize", fixViewportHeight);   
 
-window.addEventListener("load", fixViewportHeight);
-window.addEventListener("resize", fixViewportHeight);   
+    let pattern = [];
+    const correctPattern = ['1', '2', '3', '4'];
+    const patternDots = document.querySelectorAll('.pattern-dot');
+    const errorMsg = document.getElementById('error');
+    const mainContainer = document.getElementById('mainContainer');
+    let isChecking = false; // State flag to avoid double submission issues
 
-let pattern = [];
-const correctPattern = ['1', '2', '3', '4'];
-const patternDots = document.querySelectorAll('.pattern-dot');
-const errorMsg = document.getElementById('error');
-const mainContainer = document.getElementById('mainContainer');
+    function addToPattern(num) {    
+        if (isChecking || pattern.length >= 4) return;
 
-function addToPattern(num) {
-    if (pattern.length < 4) {
-        pattern.push(num);
+        pattern.push(num);        
         updatePatternDisplay();
 
-        if (pattern.length === 4) {
-            setTimeout(checkPattern, 300);
+        if (pattern.length === 4) {            
+            isChecking = true;
+            setTimeout(checkPattern, 300);        
         }
     }
-}
 
-function updatePatternDisplay() {
-    patternDots.forEach((dot, index) => {
-        dot.classList.toggle('filled', index < pattern.length);
-    });
-}
-
-function clearPattern() {
-    pattern = [];
-    updatePatternDisplay();
-    errorMsg.innerHTML = '';
-    errorMsg.className = '';
-}
-
-function checkPattern() {
-    if (pattern.join('') === correctPattern.join('')) {
-
-        errorMsg.className = 'success';
-        errorMsg.innerHTML = 'Access Granted ✨';
-
-        document.querySelectorAll('.number-btn, .action-btn').forEach(btn => {
-            btn.disabled = true;
-            btn.style.opacity = '0.5';
+    function updatePatternDisplay() {    
+        patternDots.forEach((dot, index) => {        
+            dot.classList.toggle('filled', index < pattern.length);    
         });
-
-        setTimeout(() => {
-            window.open('https://prachuradha.webbly.com, '_self');
-        }, 1000);
-
-    } else {
-
-        errorMsg.className = '';
-        errorMsg.innerHTML = 'Incorrect Pattern 💔';
-
-        mainContainer.classList.add('shake');
-        setTimeout(() => mainContainer.classList.remove('shake'), 500);
-
-        setTimeout(clearPattern, 400);
     }
-}
 
+    function clearPattern() {    
+        pattern = [];    
+        isChecking = false;
+        updatePatternDisplay();    
+        errorMsg.innerHTML = '';    
+        errorMsg.className = '';
+    }
+
+    function checkPattern() {    
+        // Do not process checks if the user clicks Unlock button prematurely
+        if (pattern.length < 4) {
+            errorMsg.innerHTML = 'Enter 4 digits';
+            return;
+        }
+
+        isChecking = true;
+
+        if (pattern.join('') === correctPattern.join('')) {
+            errorMsg.className = 'success';        
+            errorMsg.innerHTML = 'Access Granted ✨';
+
+            document.querySelectorAll('.number-btn, .action-btn').forEach(btn => {            
+                btn.disabled = true;            
+                btn.style.opacity = '0.5';        
+            });
+
+            setTimeout(() => {            
+                // Changed to window.location.href for better compatibility in WebViews
+                window.location.href = 'https://prachuradha.webbly.com';
+            }, 1000);
+
+        } else {
+            errorMsg.className = '';        
+            errorMsg.innerHTML = 'Incorrect Pattern 💔';
+
+            mainContainer.classList.add('shake');        
+            setTimeout(() => mainContainer.classList.remove('shake'), 500);
+
+            setTimeout(clearPattern, 400);    
+        }
+    }
 </script>
 </body>
 </html>
+
+
+
+
