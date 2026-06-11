@@ -77,20 +77,21 @@ html, body {
 }
 
 /* Sparkles & Floating Hearts */
+/* Sparkles & Floating Hearts */
 .sparkle {
     position: absolute;
-    bottom: -50px; /* Start off-screen from the bottom */
-    left: 0;
+    top: 0; /* Keep original top position */
+    opacity: 0; /* Default state is completely invisible */
     color: rgba(255, 255, 255, 0.4);
     font-size: 14px;
-    opacity: 0; /* Default invisible before animation starts */
     animation: riseAndFade 8s linear infinite;
+    animation-fill-mode: backwards; /* Forces the 0% keyframe to apply during the delay */
     pointer-events: none;
 }
 
 @keyframes riseAndFade {
     0% { 
-        transform: translateY(0) translateX(0) scale(0.5); 
+        transform: translateY(105vh) translateX(0) scale(0.5); 
         opacity: 0; 
     }
     10% { 
@@ -100,7 +101,7 @@ html, body {
         opacity: 0.8; 
     }
     100% { 
-        transform: translateY(-115vh) translateX(50px) scale(1.2); 
+        transform: translateY(-10vh) translateX(50px) scale(1.2); 
         opacity: 0; 
     }
 }
