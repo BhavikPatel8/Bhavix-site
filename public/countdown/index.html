@@ -70,12 +70,12 @@ body{
 }
 
 .background-layer {
-    z-index: -1; /* Deep behind cards */
+    z-index: -1; /* Behind content */
     background: linear-gradient(to bottom, #050b1e 0%, #0f1a2f 50%, #1a2d4a 100%);
 }
 
 .foreground-layer {
-    z-index: 999; /* Over cards, creating premium depth overlay */
+    z-index: 999; /* Over cards, so snow falls beautifully on top */
 }
 
 /* Animated Gradient Orbs */
@@ -219,20 +219,31 @@ body.music-active .orb3{
     pointer-events: none;
 }
 
-/* Cinematic round bokeh snow style (Font independent) */
+/* Classic Snowflake CSS (Fixed missing animation binding) */
 .snowflake{
     position:absolute;
     top:-5%;
-    background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.2) 100%);
-    border-radius:50%;
-    pointer-events:none;
+    color: white;
+    font-size: 14px;
+    opacity: 0.8;
+    animation: fall linear; /* Connected fall animation */
+    pointer-events: none;
     transform: translate3d(0, 0, 0);
     will-change: top, transform;
 }
 
-@keyframes fall{
-    0% { top: -5%; transform: translate3d(0, 0, 0); }
-    100% { top: 105%; transform: translate3d(0, 0, 0); }
+@keyframes fall {
+    0% { 
+        top: -5%; 
+        transform: translate3d(0, 0, 0) rotate(0deg); 
+    }
+    50% { 
+        transform: translate3d(20px, 0, 0) rotate(180deg); /* Beautiful flutter effect */
+    }
+    100% { 
+        top: 105%; 
+        transform: translate3d(0, 0, 0) rotate(360deg); 
+    }
 }
 
 /* ====================================
@@ -299,7 +310,7 @@ body.music-active .orb3{
     padding-right:max(15px, env(safe-area-inset-right));
 }
 
-/* Translucent cards with subtle inset shine (Android safe rendering) */
+/* Translucent glassmorphism safe backdrop styles */
 .countdown-container{
     width:100%;
     max-width:420px;
@@ -826,24 +837,22 @@ for(let i = 0; i < 90; i++){
 }
 
 // ====================================
-// SNOWFALL (100% Android compatible smooth CSS circular snow)
+// SNOWFALL (Classic Unicode Snowflake "❄" with high visibility)
 // ====================================
 function createSnow(){
     const snow = document.createElement("div");
     snow.className = "snowflake";
+    snow.textContent = "❄"; // Restored original snowflake icon
     
-    // Smooth circle scaling
-    const size = Math.random() * 5 + 5; // 5px to 10px round bokeh circles
-    snow.style.width = size + "px";
-    snow.style.height = size + "px";
-    
+    // Setting sizes for crisp look on devices
     snow.style.left = Math.random() * 100 + "%";
+    snow.style.fontSize = (Math.random() * 8 + 12) + "px"; // Range: 12px to 20px
     snow.style.animationDuration = (Math.random() * 6 + 10) + "s";
     
     document.getElementById("snowfall").appendChild(snow);
     setTimeout(() => snow.remove(), 14000);
 }
-setInterval(createSnow, 1000);
+setInterval(createSnow, 1100);
 
 // ====================================
 // COUNTDOWN
