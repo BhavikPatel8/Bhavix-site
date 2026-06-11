@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+   <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -49,10 +49,7 @@ body{
     overflow:hidden;
     position:fixed;
     overscroll-behavior:none;
-    
-    /* FIX 1: Gradient direct body par apply kiya hai, ab isse koi doosra layer hide nahi kar sakta */
     background: linear-gradient(to bottom, #050b1e 0%, #0f1a2f 50%, #1a2d4a 100%);
-    
     padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
@@ -60,7 +57,6 @@ body{
    BACKGROUND & EFFECTS LAYERS (Full-Screen, No Padding)
 ==================================== */
 
-/* FIX 2: Background effects layer ka positive z-index: 1 set kiya hai */
 .background-layer {
     position: fixed;
     top: 0;
@@ -70,6 +66,9 @@ body{
     z-index: 1; 
     pointer-events: none;
     overflow: hidden;
+    /* Forces GPU Layer allocation for background */
+    transform: translate3d(0, 0, 0); 
+    will-change: transform;
 }
 
 /* Animated Gradient Orbs */
@@ -79,6 +78,9 @@ body{
     filter:blur(80px);
     opacity:0.3;
     transition:all 0.8s ease;
+    /* Forces GPU Layer */
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
 }
 
 .orb1{
@@ -109,20 +111,20 @@ body{
 }
 
 @keyframes float1{
-    0%, 100%{ transform:translate(0, 0) scale(1); }
-    33%{ transform:translate(50px, 100px) scale(1.2); }
-    66%{ transform:translate(-30px, 50px) scale(0.9); }
+    0%, 100%{ transform:translate3d(0, 0, 0) scale(1); }
+    33%{ transform:translate3d(50px, 100px, 0) scale(1.2); }
+    66%{ transform:translate3d(-30px, 50px, 0) scale(0.9); }
 }
 
 @keyframes float2{
-    0%, 100%{ transform:translate(0, 0) scale(1); }
-    50%{ transform:translate(-60px, -80px) scale(1.3); }
+    0%, 100%{ transform:translate3d(0, 0, 0) scale(1); }
+    50%{ transform:translate3d(-60px, -80px, 0) scale(1.3); }
 }
 
 @keyframes float3{
-    0%, 100%{ transform:translate(0, 0) scale(1); }
-    33%{ transform:translate(-40px, -60px) scale(1.1); }
-    66%{ transform:translate(60px, 30px) scale(0.95); }
+    0%, 100%{ transform:translate3d(0, 0, 0) scale(1); }
+    33%{ transform:translate3d(-40px, -60px, 0) scale(1.1); }
+    66%{ transform:translate3d(60px, 30px, 0) scale(0.95); }
 }
 
 /* Music Active State */
@@ -159,19 +161,22 @@ body.music-active .orb3{
 
 .particle{
     position:absolute;
-    bottom:-10px; /* Starts below screen viewport */
+    bottom:-10px; 
     width:3px;
     height:3px;
     background:#fff;
     border-radius:50%;
     animation:particle-float linear infinite;
+    /* Forces GPU Layer to render CSS motion inside WebView */
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
 }
 
 @keyframes particle-float{
-    0%{ transform:translateY(0) translateX(0); opacity:0; }
+    0%{ transform:translate3d(0, 0, 0); opacity:0; }
     10%{ opacity:1; }
     90%{ opacity:1; }
-    100%{ transform:translateY(-110vh) translateX(50px); opacity:0; }
+    100%{ transform:translate3d(50px, -110vh, 0); opacity:0; }
 }
 
 /* Stars Layer */
@@ -192,6 +197,9 @@ body.music-active .orb3{
     border-radius:50%;
     opacity:0.7;
     animation:twinkle 3s infinite;
+    /* Forces GPU Layer */
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
 }
 
 @keyframes twinkle{
@@ -217,17 +225,20 @@ body.music-active .orb3{
     opacity:0.8;
     animation:fall linear infinite;
     pointer-events:none;
+    /* Forces GPU Layer to make snowfall smooth and visible behind backdrop-filters */
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
 }
 
 @keyframes fall{
-    to{ transform:translateY(110vh); }
+    0% { transform: translate3d(0, 0, 0); }
+    100% { transform: translate3d(0, 110vh, 0); }
 }
 
 /* ====================================
    SCROLL CONTAINER (Aligned on top of background)
 ==================================== */
 
-/* FIX 3: Scroll container ko z-index: 2 kiya hai background layer ke upar render hone ke liye */
 .scroll-container{
     position: relative;
     z-index: 2; 
@@ -308,7 +319,7 @@ body.music-active .orb3{
 .countdown-container{
     width:100%;
     max-width:420px;
-    background:rgba(255,255,255,0.08);
+    background:rgba(15, 23, 42, 0.65); /* Made background slightly darker so stars/snow behind it render correctly */
     backdrop-filter:blur(20px);
     -webkit-backdrop-filter:blur(20px);
     padding:clamp(20px, 5vw, 28px);
@@ -316,6 +327,9 @@ body.music-active .orb3{
     text-align:center;
     border:1px solid rgba(255,255,255,0.2);
     box-shadow:0 15px 40px rgba(0,0,0,0.5);
+    /* Solves backdrop clipping bug on mobile WebViews */
+    transform: translate3d(0, 0, 0); 
+    will-change: transform;
 }
 
 h1{
@@ -410,7 +424,7 @@ h1{
 .music-player{
     width:100%;
     max-width:420px;
-    background:rgba(255,255,255,0.08);
+    background:rgba(15, 23, 42, 0.65); /* Adjusted backdrop safety color */
     backdrop-filter:blur(20px);
     -webkit-backdrop-filter:blur(20px);
     padding:clamp(20px, 5vw, 24px);
@@ -419,6 +433,9 @@ h1{
     box-shadow:0 15px 40px rgba(0,0,0,0.5);
     overflow:hidden;
     position:relative;
+    /* Solves backdrop clipping bug on mobile WebViews */
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
 }
 
 .music-player::before{
@@ -687,7 +704,6 @@ h1{
     <div class="loading-text">Loading Music Player...</div>
 </div>
 
-<!-- FIX 4: Background container with positive z-index: 1 to prevent WebView rendering overlay bugs -->
 <div class="background-layer">
     <div class="orb orb1"></div>
     <div class="orb orb2"></div>
