@@ -79,6 +79,7 @@ html, body {
 /* Sparkles & Floating Hearts */
 /* Sparkles & Floating Hearts */
 /* Sparkles Layer & Container */
+/* Sparkles Layer & Container */
 #sparkleLayer {
     position: absolute;
     top: 0;
@@ -91,18 +92,17 @@ html, body {
 /* Sparkles & Floating Hearts */
 .sparkle {
     position: absolute;
-    top: 100%; /* Default position is off-screen at the very bottom */
+    top: 0; /* Layout position is 0 to bypass WebView's off-screen culling */
     left: 0;
     color: rgba(255, 255, 255, 0.4);
     font-size: 14px;
-    opacity: 0; /* Invisible by default */
-    animation: riseAndFade 6s linear infinite;
+    opacity: 0; /* Hidden by default until animation starts */
     pointer-events: none;
 }
 
 @keyframes riseAndFade {
     0% { 
-        transform: translateY(0) translateX(0) scale(0.5); 
+        transform: translateY(105vh) translateX(0) scale(0.5); 
         opacity: 0; 
     }
     10% { 
@@ -112,11 +112,11 @@ html, body {
         opacity: 0.8; 
     }
     100% { 
-        /* Translates upwards by 110% of screen height to go completely off-screen at the top */
-        transform: translateY(-110vh) translateX(50px) scale(1.2); 
+        transform: translateY(-10vh) translateX(50px) scale(1.2); 
         opacity: 0; 
     }
 }
+   
 /* ====================================
    CONTAINER & LAYOUT
 ==================================== */
@@ -385,8 +385,13 @@ updateGreeting();
 // ====================================
 // MAGICAL SPARKS GENERATOR
 // ====================================
+   
 // ====================================
 // MAGICAL SPARKS GENERATOR (FASTER SPEED)
+// ====================================
+   
+// ====================================
+// MAGICAL SPARKS GENERATOR (BULLETPROOF OPTIMIZATION)
 // ====================================
 const sparkleLayer = document.getElementById("sparkleLayer");
 const particles = ["💗", "✨", "🎈", "💖", "⭐"];
@@ -401,21 +406,22 @@ function createSparkle() {
     spark.style.left = Math.random() * 100 + "%";
     spark.style.fontSize = (Math.random() * 8 + 10) + "px";
     
-    // Made floating animation slightly faster (5s to 9s instead of 8s to 14s)
-    spark.style.animationDuration = (Math.random() * 4 + 5) + "s"; 
-    spark.style.animationDelay = Math.random() * 1.2 + "s"; 
+    // Single-line animation definition to force WebView to process 'backwards' correctly
+    const duration = (Math.random() * 3 + 4).toFixed(2); // Speed increased (4s to 7s flight time)
+    const delay = (Math.random() * 1.2).toFixed(2); // Random start delay (0s to 1.2s)
+    
+    spark.style.animation = `riseAndFade ${duration}s linear ${delay}s infinite backwards`;
     
     sparkleLayer.appendChild(spark);
     
-    // Safe clean up to prevent memory leaks
+    // Safe cleanup based on max duration + max delay (7s + 1.2s = 8.2s, so 9s is safe)
     setTimeout(() => {
         spark.remove();
-    }, 11000);
+    }, 9000);
 }
 
-// Spawns a cute element every 700ms (Much faster generation speed)
-setInterval(createSparkle, 700);
-   
+// Spawns sparkles faster (every 500ms now for a lively look)
+setInterval(createSparkle, 500);
 // ====================================
 // ABSOLUTE URL NAVIGATION
 // ====================================
