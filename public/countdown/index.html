@@ -42,33 +42,40 @@ html{
     font-size:16px !important;
 }
 
-/* Enabled native scroll on body to fix WebView composition layer bugs */
 body{
     width:100%;
     min-height:100%;
     overflow-x:hidden;
     overflow-y:auto; 
     -webkit-overflow-scrolling:touch;
-    background: transparent; /* Allows background-layer to render smoothly */
+    background: transparent; 
 }
 
 /* ====================================
-   BACKGROUND & EFFECTS LAYERS (Rendered behind the body content)
+   BACKGROUND & FOREGROUND LAYERS (GPU Accelerated)
 ==================================== */
 
-.background-layer {
+.background-layer, .foreground-layer {
     position: fixed;
     top: 0;
+    bottom: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: -1; /* Always behind everything, resolving compositor overlap bugs */
+    right: 0;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
     overflow: hidden;
-    background: linear-gradient(to bottom, #050b1e 0%, #0f1a2f 50%, #1a2d4a 100%);
-    /* GPU Layer allocation */
     transform: translate3d(0, 0, 0); 
     will-change: transform;
+}
+
+.background-layer {
+    z-index: -1; /* Deep behind cards */
+    background: linear-gradient(to bottom, #050b1e 0%, #0f1a2f 50%, #1a2d4a 100%);
+}
+
+.foreground-layer {
+    z-index: 999; /* Over cards, creating premium depth overlay */
 }
 
 /* Animated Gradient Orbs */
@@ -150,20 +157,20 @@ body.music-active .orb3{
 /* Particle System Layer */
 .particles{
     position:absolute;
-    width:100%;
-    height:100%;
-    top:0;
-    left:0;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
     pointer-events:none;
-    opacity:0.6;
+    opacity:0.5;
 }
 
 .particle{
     position:absolute;
     top:105%; 
-    width:3px;
-    height:3px;
-    background:#fff;
+    width:4px;
+    height:4px;
+    background: radial-gradient(circle, #fff 0%, rgba(255,255,255,0) 70%);
     border-radius:50%;
     opacity:0;
     animation:particle-float linear infinite;
@@ -181,47 +188,43 @@ body.music-active .orb3{
 /* Stars Layer */
 .stars{
     position:absolute;
-    width:100%;
-    height:100%;
-    top:0;
-    left:0;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
     pointer-events:none;
 }
 
 .star{
     position:absolute;
-    width:2px;
-    height:2px;
     background:white;
     border-radius:50%;
-    opacity:0.7;
     animation:twinkle 3s infinite;
     transform: translate3d(0, 0, 0);
     will-change: transform;
 }
 
 @keyframes twinkle{
-    0%, 100%{ opacity:0.7; transform:scale(1); }
-    50%{ opacity:0.2; transform:scale(0.8); }
+    0%, 100%{ opacity:0.8; transform:scale(1); }
+    50%{ opacity:0.3; transform:scale(0.8); }
 }
 
 /* Snowfall Layer */
 #snowfall {
     position: absolute;
-    width: 100%;
-    height: 100%;
     top: 0;
+    bottom: 0;
     left: 0;
+    right: 0;
     pointer-events: none;
 }
 
+/* Cinematic round bokeh snow style (Font independent) */
 .snowflake{
     position:absolute;
     top:-5%;
-    color:white;
-    font-size:14px;
-    opacity:0.8;
-    animation:fall linear infinite;
+    background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.2) 100%);
+    border-radius:50%;
     pointer-events:none;
     transform: translate3d(0, 0, 0);
     will-change: top, transform;
@@ -279,7 +282,7 @@ body.music-active .orb3{
 }
 
 /* ====================================
-   APP CONTENT (Directly rendered inside body)
+   APP CONTENT
 ==================================== */
 
 .app-container{
@@ -296,18 +299,16 @@ body.music-active .orb3{
     padding-right:max(15px, env(safe-area-inset-right));
 }
 
-/* Countdown Container - Backdrop Blur Safety Layer Applied */
+/* Translucent cards with subtle inset shine (Android safe rendering) */
 .countdown-container{
     width:100%;
     max-width:420px;
-    background:rgba(10, 18, 36, 0.75); /* Fallback transparency if backdrop-filter is blocked */
-    backdrop-filter:blur(20px);
-    -webkit-backdrop-filter:blur(20px);
+    background:rgba(10, 18, 36, 0.65); 
     padding:clamp(20px, 5vw, 28px);
     border-radius:24px;
     text-align:center;
-    border:1px solid rgba(255,255,255,0.15);
-    box-shadow:0 15px 40px rgba(0,0,0,0.5);
+    border:1px solid rgba(255,255,255,0.12);
+    box-shadow:0 15px 40px rgba(0,0,0,0.5), inset 0 0 15px rgba(255,255,255,0.03);
     transform: translate3d(0, 0, 0); 
     will-change: transform;
 }
@@ -337,10 +338,10 @@ h1{
 }
 
 .time-unit{
-    background:rgba(255,255,255,0.08);
+    background:rgba(255,255,255,0.06);
     padding:clamp(12px, 3vw, 16px);
     border-radius:16px;
-    border:1px solid rgba(255,255,255,0.1);
+    border:1px solid rgba(255,255,255,0.08);
 }
 
 .time-unit:first-child{
@@ -375,10 +376,10 @@ h1{
 
 .milliseconds-section{
     margin-top:18px;
-    background:rgba(255,255,255,0.06);
+    background:rgba(255,255,255,0.05);
     padding:clamp(10px, 3vw, 14px);
     border-radius:14px;
-    border:1px solid rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.06);
 }
 
 .milliseconds-value{
@@ -398,19 +399,17 @@ h1{
 }
 
 /* ====================================
-   MUSIC PLAYER - Backdrop Blur Safety Layer Applied
+   MUSIC PLAYER
 ==================================== */
 
 .music-player{
     width:100%;
     max-width:420px;
-    background:rgba(10, 18, 36, 0.75); /* Fallback transparency if backdrop-filter is blocked */
-    backdrop-filter:blur(20px);
-    -webkit-backdrop-filter:blur(20px);
+    background:rgba(10, 18, 36, 0.65); 
     padding:clamp(20px, 5vw, 24px);
     border-radius:24px;
-    border:1px solid rgba(255,255,255,0.15);
-    box-shadow:0 15px 40px rgba(0,0,0,0.5);
+    border:1px solid rgba(255,255,255,0.12);
+    box-shadow:0 15px 40px rgba(0,0,0,0.5), inset 0 0 15px rgba(255,255,255,0.03);
     overflow:hidden;
     position:relative;
     transform: translate3d(0, 0, 0);
@@ -683,23 +682,25 @@ h1{
     <div class="loading-text">Loading Music Player...</div>
 </div>
 
-<!-- Background Layer (Correctly composited behind native scrolling) -->
+<!-- Background Layer (gradient + orbs + stars rendering deep behind) -->
 <div class="background-layer">
     <div class="orb orb1"></div>
     <div class="orb orb2"></div>
     <div class="orb orb3"></div>
     
-    <!-- Particles -->
-    <div class="particles" id="particles"></div>
-
     <!-- Stars -->
     <div class="stars" id="stars"></div>
+</div>
 
+<!-- Foreground Layer (snow + particles floating over cards, click-through enabled) -->
+<div class="foreground-layer">
+    <!-- Particles -->
+    <div class="particles" id="particles"></div>
     <!-- Snowfall -->
     <div id="snowfall"></div>
 </div>
 
-<!-- App Container (Rendered directly under body for seamless scroll compost) -->
+<!-- App Container (Directly on body for native GPU compositing) -->
 <div class="app-container">
 
     <!-- Countdown Container -->
@@ -794,7 +795,7 @@ let isLoading = false;
 // PARTICLES (Percentage-based viewport rendering)
 // ====================================
 const particlesContainer = document.getElementById("particles");
-for(let i = 0; i < 30; i++){
+for(let i = 0; i < 25; i++){
     const particle = document.createElement("div");
     particle.className = "particle";
     particle.style.left = Math.random() * 100 + "%";
@@ -804,33 +805,45 @@ for(let i = 0; i < 30; i++){
 }
 
 // ====================================
-// STARS (Percentage-based coordinates for WebView stability)
+// STARS (High-density screen safe coordinates and sizes)
 // ====================================
 const starsContainer = document.getElementById("stars");
-for(let i = 0; i < 100; i++){
+for(let i = 0; i < 90; i++){
     const star = document.createElement("div");
     star.className = "star";
     star.style.left = Math.random() * 100 + "%";
     star.style.top = Math.random() * 100 + "%";
-    star.style.opacity = Math.random();
+    
+    // Scale star sizes to stay visible on high-resolution displays
+    const size = Math.random() * 2 + 1.5; // 1.5px to 3.5px
+    star.style.width = size + "px";
+    star.style.height = size + "px";
+    
+    // Avoid subpixel vanishing with safe opacity limits
+    star.style.opacity = Math.random() * 0.4 + 0.5; 
     star.style.animationDelay = Math.random() * 3 + "s";
     starsContainer.appendChild(star);
 }
 
 // ====================================
-// SNOWFALL
+// SNOWFALL (100% Android compatible smooth CSS circular snow)
 // ====================================
 function createSnow(){
     const snow = document.createElement("div");
     snow.className = "snowflake";
-    snow.textContent = "❄";
+    
+    // Smooth circle scaling
+    const size = Math.random() * 5 + 5; // 5px to 10px round bokeh circles
+    snow.style.width = size + "px";
+    snow.style.height = size + "px";
+    
     snow.style.left = Math.random() * 100 + "%";
-    snow.style.fontSize = (Math.random() * 6 + 10) + "px";
     snow.style.animationDuration = (Math.random() * 6 + 10) + "s";
+    
     document.getElementById("snowfall").appendChild(snow);
     setTimeout(() => snow.remove(), 14000);
 }
-setInterval(createSnow, 1200);
+setInterval(createSnow, 1000);
 
 // ====================================
 // COUNTDOWN
