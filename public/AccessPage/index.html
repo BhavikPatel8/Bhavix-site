@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#050b1e">
+<title>Special Magic Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ====================================
+   BASE RESET & CUTE VIBES
+==================================== */
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: fixed;
+    background: linear-gradient(to bottom, #050b1e 0%, #0f1a2f 50%, #16243f 100%);
+}
+
+/* ====================================
+   BACKGROUND ORBS & ANIMATED PARTICLES
+==================================== */
+.background-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* Floating Magical Orbs */
+.orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.25;
+}
+
+.orb-pink {
+    width: 250px;
+    height: 250px;
+    background: radial-gradient(circle, #ff758c, transparent);
+    top: -50px;
+    right: -50px;
+    animation: floatOrb 18s ease-in-out infinite alternate;
+}
+
+.orb-blue {
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, #38bdf8, transparent);
+    bottom: -100px;
+    left: -80px;
+    animation: floatOrb 22s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes floatOrb {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(40px, 60px) scale(1.15); }
+}
+
+/* Sparkles & Floating Hearts */
+.sparkle {
+    position: absolute;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 14px;
+    animation: riseAndFade 8s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes riseAndFade {
+    0% { transform: translateY(105vh) translateX(0) scale(0.5); opacity: 0; }
+    10% { opacity: 0.8; }
+    90% { opacity: 0.8; }
+    100% { transform: translateY(-10vh) translateX(50px) scale(1.2); opacity: 0; }
+}
+
+/* ====================================
+   CONTAINER & LAYOUT
+==================================== */
+.scroll-wrapper {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.hub-card {
+    width: 100%;
+    max-width: 400px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 32px;
+    padding: 30px 24px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    animation: cardEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transform: translateY(30px);
+    opacity: 0;
+}
+
+@keyframes cardEntrance {
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* Header Elements */
+.avatar-ring {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    margin: 0 auto 16px auto;
+    background: linear-gradient(135deg, #ff758c 0%, #38bdf8 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+    animation: ringGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes ringGlow {
+    0% { box-shadow: 0 0 15px rgba(255, 117, 140, 0.3); }
+    100% { box-shadow: 0 0 25px rgba(56, 189, 248, 0.5); }
+}
+
+.avatar-emoji {
+    font-size: 36px;
+    animation: floatEmoji 4s ease-in-out infinite;
+}
+
+@keyframes floatEmoji {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-5px) rotate(5deg); }
+}
+
+.greeting {
+    font-size: 1.3em;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    font-size: 0.82em;
+    color: #a8d8ff;
+    margin-bottom: 28px;
+    font-weight: 300;
+    letter-spacing: 0.5px;
+}
+
+/* ====================================
+   BUTTONS UI/UX
+==================================== */
+.button-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.hub-btn {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    position: relative;
+    overflow: hidden;
+    transform: scale(1);
+}
+
+/* Hover & Active/Tap Feedback */
+.hub-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+}
+
+.hub-btn:active {
+    transform: scale(0.96) translateY(0);
+}
+
+/* Button Custom Accents */
+.btn-countdown {
+    box-shadow: inset 0 0 0 rgba(56, 189, 248, 0);
+}
+.btn-countdown:hover {
+    box-shadow: 0 8px 25px rgba(56, 189, 248, 0.15), inset 3px 0 0 #38bdf8;
+    border-color: rgba(56, 189, 248, 0.3);
+}
+
+.btn-birthday {
+    box-shadow: inset 0 0 0 rgba(255, 117, 140, 0);
+}
+.btn-birthday:hover {
+    box-shadow: 0 8px 25px rgba(255, 117, 140, 0.15), inset 3px 0 0 #ff758c;
+    border-color: rgba(255, 117, 140, 0.3);
+}
+
+.btn-weebly {
+    box-shadow: inset 0 0 0 rgba(255, 215, 0, 0);
+}
+.btn-weebly:hover {
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.12), inset 3px 0 0 #ffd700;
+    border-color: rgba(255, 215, 0, 0.3);
+}
+
+/* Inner elements */
+.btn-icon {
+    font-size: 26px;
+    min-width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.3s ease;
+}
+
+.hub-btn:hover .btn-icon {
+    transform: scale(1.1) rotate(-5deg);
+}
+
+.btn-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.btn-title {
+    font-size: 0.95em;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.btn-desc {
+    font-size: 0.72em;
+    color: #a8d8ff;
+    margin-top: 2px;
+    font-weight: 300;
+}
+
+/* Footer Cute Note */
+.cute-footer {
+    margin-top: 24px;
+    font-size: 0.72em;
+    color: rgba(255, 255, 255, 0.35);
+    letter-spacing: 0.5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="background-container">
+    <div class="orb orb-pink"></div>
+    <div class="orb orb-blue"></div>
+    <!-- Script will dynamically spawn soft floating sparkles here -->
+    <div id="sparkleLayer"></div>
+</div>
+
+<div class="scroll-wrapper">
+    <div class="hub-card">
+        
+        <div class="avatar-ring">
+            <span class="avatar-emoji">🌸</span>
+        </div>
+
+        <h1 class="greeting" id="timeGreeting">Hello, Welcome!</h1>
+        <div class="subtitle">Welcome to the Magical Space ✨</div>
+
+        <div class="button-list">
+            
+            <!-- Button 1: Countdown -->
+            <button class="hub-btn btn-countdown" onclick="navigateTo('https://bhavix-site.web.app/countdown')">
+                <div class="btn-icon">❄️</div>
+                <div class="btn-content">
+                    <span class="btn-title">December Countdown</span>
+                    <span class="btn-desc">Tracking the magical days left...</span>
+                </div>
+            </button>
+
+            <!-- Button 2: Birthday Special -->
+            <button class="hub-btn btn-birthday" onclick="navigateTo('https://bhavix-site.web.app/special')">
+                <div class="btn-icon">🎂</div>
+                <div class="btn-content">
+                    <span class="btn-title">Birthday Special</span>
+                    <span class="btn-desc">A beautiful surprise waiting for you!</span>
+                </div>
+            </button>
+
+            <!-- Button 3: Weebly Site -->
+            <button class="hub-btn btn-weebly" onclick="navigateTo('https://prachuradha.weebly.com')">
+                <div class="btn-icon">✨</div>
+                <div class="btn-content">
+                    <span class="btn-title">PrachuRadha Space</span>
+                    <span class="btn-desc">Explore your beautiful dedicated world.</span>
+                </div>
+            </button>
+
+        </div>
+
+        <div class="cute-footer">Made with Love 💖</div>
+
+    </div>
+</div>
+
+<script>
+// ====================================
+// TIME-BASED GREETING LOGIC
+// ====================================
+function updateGreeting() {
+    const hour = new Date().getHours();
+    const greetingEl = document.getElementById("timeGreeting");
+    let greetText = "Hello, Welcome! ✨";
+
+    if (hour >= 5 && hour < 12) {
+        greetText = "Good Morning, Bestie! ☀️";
+    } else if (hour >= 12 && hour < 17) {
+        greetText = "Good Afternoon! ☁️";
+    } else if (hour >= 17 && hour < 21) {
+        greetText = "Good Evening! 🌙";
+    } else {
+        greetText = "Sweet Dreams! ✨";
+    }
+    
+    greetingEl.textContent = greetText;
+}
+updateGreeting();
+
+// ====================================
+// MAGICAL SPARKS GENERATOR
+// ====================================
+const sparkleLayer = document.getElementById("sparkleLayer");
+const particles = ["🌸", "✨", "🎈", "💖", "⭐"];
+
+function createSparkle() {
+    const spark = document.createElement("div");
+    spark.className = "sparkle";
+    
+    // Choose a random cute icon
+    spark.textContent = particles[Math.floor(Math.random() * particles.length)];
+    
+    spark.style.left = Math.random() * 100 + "%";
+    spark.style.fontSize = (Math.random() * 8 + 10) + "px";
+    spark.style.animationDuration = (Math.random() * 6 + 8) + "s";
+    spark.style.animationDelay = Math.random() * 2 + "s";
+    
+    sparkleLayer.appendChild(spark);
+    
+    // Prevent memory leaks
+    setTimeout(() => {
+        spark.remove();
+    }, 10000);
+}
+
+// Spawns a cute element every 1.5 seconds
+setInterval(createSparkle, 1500);
+
+// ====================================
+// ABSOLUTE URL NAVIGATION
+// ====================================
+function navigateTo(url) {
+    // Ensures flawless transition in WebView
+    window.location.href = url;
+}
+</script>
+
+</body>
+</html>
