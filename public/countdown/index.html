@@ -1,4 +1,4 @@
-   <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -159,24 +159,26 @@ body.music-active .orb3{
     opacity:0.6;
 }
 
+/* Modified to avoid VH units - Default fallback starts at bottom offscreen */
 .particle{
     position:absolute;
-    bottom:-10px; 
+    top:105%; 
     width:3px;
     height:3px;
     background:#fff;
     border-radius:50%;
+    opacity:0;
     animation:particle-float linear infinite;
     /* Forces GPU Layer to render CSS motion inside WebView */
     transform: translate3d(0, 0, 0);
-    will-change: transform;
+    will-change: top, transform, opacity;
 }
 
 @keyframes particle-float{
-    0%{ transform:translate3d(0, 0, 0); opacity:0; }
+    0%{ top: 105%; transform:translate3d(0, 0, 0); opacity:0; }
     10%{ opacity:1; }
     90%{ opacity:1; }
-    100%{ transform:translate3d(50px, -110vh, 0); opacity:0; }
+    100%{ top: -5%; transform:translate3d(50px, 0, 0); opacity:0; }
 }
 
 /* Stars Layer */
@@ -217,9 +219,10 @@ body.music-active .orb3{
     pointer-events: none;
 }
 
+/* Modified to avoid VH units - Default fallback starts at top offscreen */
 .snowflake{
     position:absolute;
-    top:-20px;
+    top: -5%;
     color:white;
     font-size:14px;
     opacity:0.8;
@@ -227,12 +230,12 @@ body.music-active .orb3{
     pointer-events:none;
     /* Forces GPU Layer to make snowfall smooth and visible behind backdrop-filters */
     transform: translate3d(0, 0, 0);
-    will-change: transform;
+    will-change: top, transform;
 }
 
 @keyframes fall{
-    0% { transform: translate3d(0, 0, 0); }
-    100% { transform: translate3d(0, 110vh, 0); }
+    0% { top: -5%; transform: translate3d(0, 0, 0); }
+    100% { top: 105%; transform: translate3d(0, 0, 0); }
 }
 
 /* ====================================
