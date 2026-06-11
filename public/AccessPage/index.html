@@ -78,20 +78,31 @@ html, body {
 
 /* Sparkles & Floating Hearts */
 /* Sparkles & Floating Hearts */
+/* Sparkles Layer & Container */
+#sparkleLayer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Sparkles & Floating Hearts */
 .sparkle {
     position: absolute;
-    top: 0; /* Keep original top position */
-    opacity: 0; /* Default state is completely invisible */
+    top: 100%; /* Default position is off-screen at the very bottom */
+    left: 0;
     color: rgba(255, 255, 255, 0.4);
     font-size: 14px;
-    animation: riseAndFade 8s linear infinite;
-    animation-fill-mode: backwards; /* Forces the 0% keyframe to apply during the delay */
+    opacity: 0; /* Invisible by default */
+    animation: riseAndFade 6s linear infinite;
     pointer-events: none;
 }
 
 @keyframes riseAndFade {
     0% { 
-        transform: translateY(105vh) translateX(0) scale(0.5); 
+        transform: translateY(0) translateX(0) scale(0.5); 
         opacity: 0; 
     }
     10% { 
@@ -101,11 +112,11 @@ html, body {
         opacity: 0.8; 
     }
     100% { 
-        transform: translateY(-10vh) translateX(50px) scale(1.2); 
+        /* Translates upwards by 110% of screen height to go completely off-screen at the top */
+        transform: translateY(-110vh) translateX(50px) scale(1.2); 
         opacity: 0; 
     }
 }
-
 /* ====================================
    CONTAINER & LAYOUT
 ==================================== */
@@ -374,6 +385,9 @@ updateGreeting();
 // ====================================
 // MAGICAL SPARKS GENERATOR
 // ====================================
+// ====================================
+// MAGICAL SPARKS GENERATOR (FASTER SPEED)
+// ====================================
 const sparkleLayer = document.getElementById("sparkleLayer");
 const particles = ["💗", "✨", "🎈", "💖", "⭐"];
 
@@ -386,20 +400,22 @@ function createSparkle() {
     
     spark.style.left = Math.random() * 100 + "%";
     spark.style.fontSize = (Math.random() * 8 + 10) + "px";
-    spark.style.animationDuration = (Math.random() * 6 + 8) + "s";
-    spark.style.animationDelay = Math.random() * 2 + "s";
+    
+    // Made floating animation slightly faster (5s to 9s instead of 8s to 14s)
+    spark.style.animationDuration = (Math.random() * 4 + 5) + "s"; 
+    spark.style.animationDelay = Math.random() * 1.2 + "s"; 
     
     sparkleLayer.appendChild(spark);
     
-    // Prevent memory leaks
+    // Safe clean up to prevent memory leaks
     setTimeout(() => {
         spark.remove();
-    }, 10000);
+    }, 11000);
 }
 
-// Spawns a cute element every 1.5 seconds
-setInterval(createSparkle, 1500);
-
+// Spawns a cute element every 700ms (Much faster generation speed)
+setInterval(createSparkle, 700);
+   
 // ====================================
 // ABSOLUTE URL NAVIGATION
 // ====================================
