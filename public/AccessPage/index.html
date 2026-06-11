@@ -79,17 +79,30 @@ html, body {
 /* Sparkles & Floating Hearts */
 .sparkle {
     position: absolute;
+    bottom: -50px; /* Start off-screen from the bottom */
+    left: 0;
     color: rgba(255, 255, 255, 0.4);
     font-size: 14px;
+    opacity: 0; /* Default invisible before animation starts */
     animation: riseAndFade 8s linear infinite;
     pointer-events: none;
 }
 
 @keyframes riseAndFade {
-    0% { transform: translateY(105vh) translateX(0) scale(0.5); opacity: 0; }
-    10% { opacity: 0.8; }
-    90% { opacity: 0.8; }
-    100% { transform: translateY(-10vh) translateX(50px) scale(1.2); opacity: 0; }
+    0% { 
+        transform: translateY(0) translateX(0) scale(0.5); 
+        opacity: 0; 
+    }
+    10% { 
+        opacity: 0.8; 
+    }
+    90% { 
+        opacity: 0.8; 
+    }
+    100% { 
+        transform: translateY(-115vh) translateX(50px) scale(1.2); 
+        opacity: 0; 
+    }
 }
 
 /* ====================================
