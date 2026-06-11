@@ -80,6 +80,7 @@ html, body {
 /* Sparkles & Floating Hearts */
 /* Sparkles Layer & Container */
 /* Sparkles Layer & Container */
+/* Sparkles Layer & Container */
 #sparkleLayer {
     position: absolute;
     top: 0;
@@ -92,17 +93,19 @@ html, body {
 /* Sparkles & Floating Hearts */
 .sparkle {
     position: absolute;
-    top: 0; /* Layout position is 0 to bypass WebView's off-screen culling */
+    top: 105%; /* Default position is safely bottom-most off-screen */
     left: 0;
     color: rgba(255, 255, 255, 0.4);
     font-size: 14px;
-    opacity: 0; /* Hidden by default until animation starts */
+    opacity: 0; /* Default invisible */
     pointer-events: none;
 }
 
+/* CSS Percentage-based animation (No buggy 'vh' or 'translateY' anymore) */
 @keyframes riseAndFade {
     0% { 
-        transform: translateY(105vh) translateX(0) scale(0.5); 
+        top: 105%; /* Start from bottom */
+        transform: translateX(0) scale(0.5); 
         opacity: 0; 
     }
     10% { 
@@ -112,7 +115,8 @@ html, body {
         opacity: 0.8; 
     }
     100% { 
-        transform: translateY(-10vh) translateX(50px) scale(1.2); 
+        top: -10%; /* Rise up to the top of the screen */
+        transform: translateX(50px) scale(1.2); 
         opacity: 0; 
     }
 }
@@ -393,6 +397,10 @@ updateGreeting();
 // ====================================
 // MAGICAL SPARKS GENERATOR (BULLETPROOF OPTIMIZATION)
 // ====================================
+
+// ====================================
+// MAGICAL SPARKS GENERATOR (BULLETPROOF FIXED)
+// ====================================
 const sparkleLayer = document.getElementById("sparkleLayer");
 const particles = ["💗", "✨", "🎈", "💖", "⭐"];
 
@@ -406,22 +414,23 @@ function createSparkle() {
     spark.style.left = Math.random() * 100 + "%";
     spark.style.fontSize = (Math.random() * 8 + 10) + "px";
     
-    // Single-line animation definition to force WebView to process 'backwards' correctly
-    const duration = (Math.random() * 3 + 4).toFixed(2); // Speed increased (4s to 7s flight time)
-    const delay = (Math.random() * 1.2).toFixed(2); // Random start delay (0s to 1.2s)
+    // Shorthand animation setup for perfect Android compatibility
+    const duration = (Math.random() * 3 + 4).toFixed(2); // 4s to 7s floating time
+    const delay = (Math.random() * 1.2).toFixed(2); // 0s to 1.2s delay
     
     spark.style.animation = `riseAndFade ${duration}s linear ${delay}s infinite backwards`;
     
     sparkleLayer.appendChild(spark);
     
-    // Safe cleanup based on max duration + max delay (7s + 1.2s = 8.2s, so 9s is safe)
+    // Clean up elements once they complete their animation loop (9 seconds is safe)
     setTimeout(() => {
         spark.remove();
     }, 9000);
 }
 
-// Spawns sparkles faster (every 500ms now for a lively look)
+// Spawns sparkles smoothly every 500ms
 setInterval(createSparkle, 500);
+   
 // ====================================
 // ABSOLUTE URL NAVIGATION
 // ====================================
