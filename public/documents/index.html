@@ -2,47 +2,61 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Daily Prayer</title>
 
 <style>
-    *{
-        margin:0;
-        padding:0;
-        box-sizing:border-box;
-    }
+html,body{
+    margin:0;
+    padding:0;
+    width:100%;
+    height:100%;
+    background:#fff;
+    overflow:auto;
+}
 
-    html,body{
-        width:100%;
-        height:100%;
-        overflow:hidden;
-        background:#ffffff;
-    }
-
-    .pdf-container{
-        position:fixed;
-        top:0;
-        left:0;
-        width:100%;
-        height:100%;
-    }
-
-    iframe{
-        width:100%;
-        height:100%;
-        border:none;
-        display:block;
-    }
+canvas{
+    display:block;
+    width:100%;
+    height:auto;
+    margin:0 auto;
+}
 </style>
 </head>
 <body>
 
-<div class="pdf-container">
-    <iframe
-        src="dailypraynew.pdf#toolbar=0&navpanes=0&scrollbar=0&view=FitH">
-    </iframe>
-</div>
+<div id="pdf-container"></div>
+
+<script type="module">
+import * as pdfjsLib from './pdfjs/pdf.mjs';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+'./pdfjs/pdf.worker.mjs';
+
+const pdf = await pdfjsLib.getDocument('dailypraynew.pdf').promise;
+const container = document.getElementById('pdf-container');
+
+for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+
+    const page = await pdf.getPage(pageNum);
+
+    const viewport = page.getViewport({ scale: 1.5 });
+
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    container.appendChild(canvas);
+
+    await page.render({
+        canvasContext: context,
+        viewport: viewport
+    }).promise;
+}
+</script>
 
 </body>
 </html>
