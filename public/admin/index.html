@@ -1,0 +1,1869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bhavix-site Admin Portal</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- CSS Styling (Glassmorphism, Transitions & Layout) -->
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --bg-glowing-blob: radial-gradient(circle, rgba(108, 92, 231, 0.12) 0%, rgba(9, 13, 22, 0) 70%);
+            --glass-background: rgba(17, 25, 40, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-border-focus: rgba(108, 92, 231, 0.45);
+            
+            --accent-blue: #00cec9;
+            --accent-purple: #a29bfe;
+            --accent-primary: #6c5ce7;
+            --accent-hover: #5b4bc4;
+            
+            --text-primary: #f5f6fa;
+            --text-muted: #a5b1c2;
+            
+            --color-success: #00b894;
+            --color-success-glass: rgba(0, 184, 148, 0.15);
+            --color-danger: #ff7675;
+            --color-danger-glass: rgba(255, 118, 117, 0.15);
+            --color-warning: #f1c40f;
+            --font-stack: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: var(--bg-glowing-blob);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            font-family: var(--font-stack);
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+
+        /* Glass Utility Classes */
+        .glass {
+            background: var(--glass-background);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+        }
+
+        /* Page Layout */
+        .admin-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: 280px;
+            background: rgba(10, 15, 26, 0.9);
+            backdrop-filter: blur(16px);
+            border-right: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            padding: 2rem 1.5rem;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 3rem;
+        }
+
+        .brand-icon {
+            font-size: 1.8rem;
+            color: var(--accent-purple);
+        }
+
+        .sidebar-brand h2 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex-grow: 1;
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 12px 16px;
+            border-radius: 8px;
+            text-align: left;
+            font-family: var(--font-stack);
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+
+        .nav-btn.active {
+            background: var(--accent-primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+        }
+
+        .sidebar-footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 1.5rem;
+        }
+
+        /* Connection Status */
+        .connection-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .connection-status.online .status-dot {
+            background: var(--color-success);
+            box-shadow: 0 0 8px var(--color-success);
+        }
+
+        .connection-status.offline .status-dot {
+            background: var(--color-danger);
+            box-shadow: 0 0 8px var(--color-danger);
+        }
+
+        /* Main Workspace */
+        .main-content {
+            flex-grow: 1;
+            margin-left: 280px;
+            padding: 2.5rem 3rem;
+            min-width: 0;
+        }
+
+        /* Top Header */
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 1.5rem;
+        }
+
+        .top-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .sync-time {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Tab Switching Control */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Dashboard Metrics Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .metric-card {
+            display: flex;
+            align-items: center;
+            padding: 1.5rem;
+            gap: 1.25rem;
+            transition: transform 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .card-icon.blue { background: rgba(0, 206, 201, 0.1); color: var(--accent-blue); }
+        .card-icon.purple { background: rgba(162, 155, 254, 0.1); color: var(--accent-purple); }
+        .card-icon.green { background: var(--color-success-glass); color: var(--color-success); }
+        .card-icon.red { background: var(--color-danger-glass); color: var(--color-danger); }
+        .card-icon.orange { background: rgba(225, 112, 85, 0.1); color: #e17055; }
+        .card-icon.cyan { background: rgba(9, 132, 227, 0.1); color: #0984e3; }
+
+        .card-info h3 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        /* Section Components */
+        .section-container {
+            padding: 2rem;
+            border-radius: 14px;
+        }
+
+        .margin-top { margin-top: 2rem; }
+        .margin-top-sm { margin-top: 1.25rem; }
+        .max-w-lg { max-width: 650px; }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-header.border-bottom {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 1rem;
+        }
+
+        .section-header h2 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .icon-left {
+            margin-right: 10px;
+            color: var(--accent-purple);
+        }
+
+        /* Custom UI Buttons */
+        .btn {
+            font-family: var(--font-stack);
+            font-weight: 500;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+            padding: 12px 24px;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            font-size: 0.85rem;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-danger {
+            background: var(--color-danger-glass);
+            border: 1px solid rgba(255, 118, 117, 0.3);
+            color: var(--color-danger);
+            padding: 10px 20px;
+            font-size: 0.9rem;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: rgba(255, 118, 117, 0.25);
+            border-color: var(--color-danger);
+        }
+
+        .btn-danger:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+
+        .btn-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
+            color: var(--text-muted);
+        }
+
+        .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+        }
+
+        /* Responsive Table Styles */
+        .table-responsive {
+            overflow-x: auto;
+            width: 100%;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        .data-table th, 
+        .data-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            vertical-align: middle;
+        }
+
+        .data-table th {
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .data-table tbody tr {
+            transition: background 0.15s ease;
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Checkbox customization */
+        .custom-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--accent-primary);
+        }
+
+        /* Editable Inline Field Input Styles */
+        .editable-field {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 6px 10px;
+            font-size: 0.85rem;
+            font-family: monospace;
+            width: 100%;
+            max-width: 130px;
+            transition: all 0.2s ease;
+        }
+
+        .editable-field:focus {
+            outline: none;
+            border-color: var(--accent-purple);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 5px rgba(162, 155, 254, 0.2);
+        }
+
+        /* Badges styling */
+        .badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-success {
+            background: var(--color-success-glass);
+            color: var(--color-success);
+        }
+
+        .badge-danger {
+            background: var(--color-danger-glass);
+            color: var(--color-danger);
+        }
+
+        .badge-neutral {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+        }
+
+        .badge-cyan {
+            background: rgba(9, 132, 227, 0.1);
+            color: #0984e3;
+        }
+
+        .text-center { text-align: center; }
+        .text-success { color: var(--color-success); }
+        .text-danger { color: var(--color-danger); }
+
+        /* Form Controls */
+        .form-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 14px;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .input-wrapper input,
+        .input-wrapper textarea {
+            width: 100%;
+            padding: 12px 14px 12px 42px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: var(--font-stack);
+            font-size: 0.95rem;
+            transition: all 0.25s ease;
+        }
+
+        .input-wrapper textarea {
+            padding-left: 14px;
+        }
+
+        .input-wrapper input:focus,
+        .input-wrapper textarea:focus {
+            outline: none;
+            border-color: var(--glass-border-focus);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 0 10px rgba(108, 92, 231, 0.15);
+        }
+
+        .form-text {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        /* Toggle Switch Styling */
+        .toggle-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .toggle-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .3s;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-primary);
+        }
+
+        input:focus + .slider {
+            box-shadow: 0 0 1px var(--accent-primary);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+
+        .slider.round {
+            border-radius: 34px;
+        }
+
+        .slider.round:before {
+            border-radius: 50%;
+        }
+
+        /* Advanced Filtering Bars */
+        .filters-container {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+            max-width: 400px;
+        }
+
+        .search-input-wrapper i {
+            position: absolute;
+            left: 14px;
+            color: var(--text-muted);
+        }
+
+        .search-input-wrapper input {
+            width: 100%;
+            padding: 10px 14px 10px 38px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: var(--font-stack);
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .search-input-wrapper input:focus {
+            outline: none;
+            border-color: var(--glass-border-focus);
+        }
+
+        .filter-dropdowns {
+            display: flex;
+            gap: 12px;
+        }
+
+        .filter-dropdowns select {
+            background: rgba(17, 25, 40, 0.85);
+            color: var(--text-primary);
+            border: 1px solid var(--glass-border);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-family: var(--font-stack);
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .filter-dropdowns select:focus {
+            outline: none;
+            border-color: var(--glass-border-focus);
+        }
+
+        /* Cleanup Actions Bar (History specific) */
+        .cleanup-actions-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 18px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            margin-bottom: 1.25rem;
+        }
+
+        .selected-count-indicator {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        /* Loaders styling */
+        .loader-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .loader-container.hidden {
+            display: none;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            border-top-color: var(--accent-primary);
+            animation: spin 0.8s ease-in-out infinite;
+            margin-bottom: 12px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast System */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 9999;
+        }
+
+        .toast {
+            padding: 14px 20px;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast-success { border-left: 4px solid var(--color-success); }
+        .toast-error { border-left: 4px solid var(--color-danger); }
+        .toast-info { border-left: 4px solid var(--accent-blue); }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .ua-column {
+            max-width: 150px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 992px) {
+            .sidebar {
+                width: 70px;
+                padding: 2rem 0.5rem;
+                align-items: center;
+            }
+            .sidebar-brand h2,
+            .sidebar-footer,
+            .nav-btn span {
+                display: none;
+            }
+            .nav-btn {
+                justify-content: center;
+                width: 44px;
+                height: 44px;
+                padding: 0;
+                border-radius: 50%;
+            }
+            .main-content {
+                margin-left: 70px;
+                padding: 2rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .admin-container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+                flex-direction: row;
+                justify-content: space-between;
+                padding: 1rem;
+            }
+            .sidebar-nav {
+                flex-direction: row;
+                flex-grow: 0;
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 1.5rem 1rem;
+            }
+            .top-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            .filters-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filter-dropdowns {
+                width: 100%;
+            }
+            .filter-dropdowns select {
+                flex-grow: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <i class="fa-solid fa-user-shield brand-icon"></i>
+                <h2>Bhavix Admin</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-btn active" data-target="dashboard">
+                    <i class="fa-solid fa-chart-line"></i> <span>Dashboard</span>
+                </button>
+                <button class="nav-btn" data-target="settings">
+                    <i class="fa-solid fa-sliders"></i> <span>Lock Settings</span>
+                </button>
+                <button class="nav-btn" data-target="attempts">
+                    <i class="fa-solid fa-history"></i> <span>Unlock Attempts</span>
+                </button>
+                <button class="nav-btn" data-target="users">
+                    <i class="fa-solid fa-users"></i> <span>Users Directory</span>
+                </button>
+                <!-- NEW Tab: History Manager -->
+                <button class="nav-btn" data-target="history">
+                    <i class="fa-solid fa-clock-rotate-left"></i> <span>History Manager</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="connection-status offline" id="connection-indicator">
+                    <span class="status-dot"></span> <span id="connection-text">Connecting...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div>
+                    <h1 id="page-title">Dashboard Overview</h1>
+                    <p class="subtitle">Real-time control center for Bhavix-site Lock Page [1]</p>
+                </div>
+                <div class="header-actions">
+                    <span class="sync-time" id="last-sync">Last synced: Never</span>
+                    <button class="btn btn-icon" id="refresh-btn" title="Refresh Data Connection">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Loading overlay during dynamic data bootstrap -->
+            <div id="global-loader" class="loader-container">
+                <div class="spinner"></div>
+                <p>Synchronizing with Firebase...</p>
+            </div>
+
+            <!-- TAB 1: Dashboard Overview -->
+            <section id="dashboard" class="tab-content active">
+                <div class="dashboard-grid">
+                    <!-- Metric Cards -->
+                    <div class="metric-card glass">
+                        <div class="card-icon blue"><i class="fa-solid fa-users"></i></div>
+                        <div class="card-info">
+                            <h3>Total Users</h3>
+                            <p class="metric-value" id="card-total-users">0</p>
+                        </div>
+                    </div>
+                    <div class="metric-card glass">
+                        <div class="card-icon purple"><i class="fa-solid fa-fingerprint"></i></div>
+                        <div class="card-info">
+                            <h3>Total Attempts</h3>
+                            <p class="metric-value" id="card-total-attempts">0</p>
+                        </div>
+                    </div>
+                    <div class="metric-card glass">
+                        <div class="card-icon green"><i class="fa-solid fa-circle-check"></i></div>
+                        <div class="card-info">
+                            <h3>Successful Attempts</h3>
+                            <p class="metric-value text-success" id="card-success-attempts">0</p>
+                        </div>
+                    </div>
+                    <div class="metric-card glass">
+                        <div class="card-icon red"><i class="fa-solid fa-circle-xmark"></i></div>
+                        <div class="card-info">
+                            <h3>Failed Attempts</h3>
+                            <p class="metric-value text-danger" id="card-failed-attempts">0</p>
+                        </div>
+                    </div>
+                    <div class="metric-card glass">
+                        <div class="card-icon orange"><i class="fa-solid fa-mobile-screen-button"></i></div>
+                        <div class="card-info">
+                            <h3>WebView Users</h3>
+                            <p class="metric-value" id="card-webview-users">0</p>
+                        </div>
+                    </div>
+                    <div class="metric-card glass">
+                        <div class="card-icon cyan"><i class="fa-solid fa-globe"></i></div>
+                        <div class="card-info">
+                            <h3>Browser Users</h3>
+                            <p class="metric-value" id="card-browser-users">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity Preview -->
+                <div class="section-container glass margin-top">
+                    <div class="section-header">
+                        <h2>Recent Unlock Attempts</h2>
+                        <button class="btn btn-sm btn-secondary view-all-btn" data-target="attempts">View All</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>UID</th>
+                                    <th>Date/Time</th>
+                                    <th>Status</th>
+                                    <th>Device</th>
+                                    <th>Browser</th>
+                                    <th>Entered Pattern</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-attempts-body">
+                                <tr>
+                                    <td colspan="6" class="text-center">No recent attempts logged yet.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: Lock Page Settings -->
+            <section id="settings" class="tab-content">
+                <div class="section-container glass max-w-lg">
+                    <div class="section-header border-bottom">
+                        <h2><i class="fa-solid fa-gears icon-left"></i>Lock Page Configuration</h2>
+                        <p class="subtitle">Changes saved here apply immediately on visitor screens [1].</p>
+                    </div>
+                    <form id="settings-form" class="form-grid">
+                        <div class="form-group">
+                            <label for="setting-pattern">Lock Pattern</label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-key input-icon"></i>
+                                <input type="text" id="setting-pattern" placeholder="e.g. 2580" required autocomplete="off">
+                            </div>
+                            <small class="form-text">Store security patterns securely. Update safely anytime.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="setting-hint">Hint Line</label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-circle-info input-icon"></i>
+                                <input type="text" id="setting-hint" placeholder="Enter hint message..." required>
+                            </div>
+                            <small class="form-text">Instruction message displayed under lock mechanism.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="setting-version">Latest Version</label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-code-branch input-icon"></i>
+                                <input type="text" id="setting-version" placeholder="e.g. 1.0.0" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="setting-notice">Custom Notice/Alert Banner</label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-bullhorn input-icon"></i>
+                                <textarea id="setting-notice" rows="3" placeholder="Welcome message or temporary notification..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="form-group toggle-group">
+                            <div class="toggle-info">
+                                <label>Maintenance Mode</label>
+                                <p class="form-text">Turn on to block all interactions and present a maintenance screen.</p>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="setting-maintenance">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" id="btn-save-settings">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Save Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- TAB 3: Attempts Tracking -->
+            <section id="attempts" class="tab-content">
+                <div class="section-container glass">
+                    <!-- Filters Grid -->
+                    <div class="filters-container">
+                        <div class="search-input-wrapper">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="filter-attempts-uid" placeholder="Search by UID...">
+                        </div>
+                        <div class="filter-dropdowns">
+                            <select id="filter-attempts-status">
+                                <option value="">All Statuses</option>
+                                <option value="success">Success Only</option>
+                                <option value="failed">Failed Only</option>
+                            </select>
+                            <select id="filter-attempts-device">
+                                <option value="">All Devices</option>
+                                <option value="webview">WebView</option>
+                                <option value="browser">Web Browser</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive margin-top-sm">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>UID</th>
+                                    <th>Timestamp</th>
+                                    <th>Status</th>
+                                    <th>Device</th>
+                                    <th>Browser</th>
+                                    <th>Pattern Entered</th>
+                                    <th>User Agent</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attempts-table-body">
+                                <tr>
+                                    <td colspan="7" class="text-center">No logs recorded.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: Users Directory -->
+            <section id="users" class="tab-content">
+                <div class="section-container glass">
+                    <!-- Filters Grid -->
+                    <div class="filters-container">
+                        <div class="search-input-wrapper">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="filter-users-uid" placeholder="Search by UID...">
+                        </div>
+                        <div class="filter-dropdowns">
+                            <select id="filter-users-device">
+                                <option value="">All Devices</option>
+                                <option value="webview">WebView Only</option>
+                                <option value="browser">Standard Browser Only</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive margin-top-sm">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>UID</th>
+                                    <th>Device Profile</th>
+                                    <th>Browser Engine</th>
+                                    <th>First Visit Date</th>
+                                    <th>Last Active</th>
+                                    <th class="text-center">Total Att.</th>
+                                    <th class="text-center text-success">Success</th>
+                                    <th class="text-center text-danger">Failed</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <tr>
+                                    <td colspan="8" class="text-center">No active users.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- NEW TAB 5: History Section (Cleanup, Inline Modification, Batch Deletes) -->
+            <section id="history" class="tab-content">
+                <div class="section-container glass">
+                    <div class="section-header border-bottom">
+                        <div>
+                            <h2><i class="fa-solid fa-clock-rotate-left icon-left"></i>History Manager</h2>
+                            <p class="subtitle">Modify user attempts inline or select records to wipe them from memory and Firebase.</p>
+                        </div>
+                    </div>
+
+                    <!-- Actions Bar -->
+                    <div class="cleanup-actions-bar">
+                        <div style="display: flex; align-items: center; gap: 14px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+                                <input type="checkbox" id="history-select-all" class="custom-checkbox">
+                                Select All Visible
+                            </label>
+                            <span class="selected-count-indicator" id="history-selected-count">0 items selected</span>
+                        </div>
+                        <button class="btn btn-danger" id="history-btn-delete" disabled>
+                            <i class="fa-solid fa-trash-can"></i> Delete Selected
+                        </button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">Select</th>
+                                    <th>UID</th>
+                                    <th>Date/Time</th>
+                                    <th>Status</th>
+                                    <th>Device Profile</th>
+                                    <th>Entered Pattern (Editable)</th>
+                                    <th>Firebase Reference Path</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-table-body">
+                                <tr>
+                                    <td colspan="7" class="text-center">No historical entries found.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Notification Toast Element Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Firebase Application Core Logic -->
+    <script type="module">
+        // Import modular Firebase SDK (v10)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getDatabase, 
+            ref, 
+            onValue, 
+            update 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Integrated Firebase SDK Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBYsiWoEOWJ35sVAIdwj1tlLzmpSEyaE5o",
+            authDomain: "bhavix-site.firebaseapp.com",
+            databaseURL: "https://bhavix-site-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "bhavix-site",
+            storageBucket: "bhavix-site.firebasestorage.app",
+            messagingSenderId: "973089920463",
+            appId: "1:973089920463:web:dd47c817434a852a56eeba",
+            measurementId: "G-R05Y9Z9KW6"
+        };
+
+        // Initialize App Connection
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Core Application State Memory
+        let state = {
+            settings: {},
+            users: {},
+            attempts: {}
+        };
+
+        // DOM Element Mapping References
+        const elements = {
+            navButtons: document.querySelectorAll('.nav-btn'),
+            tabs: document.querySelectorAll('.tab-content'),
+            pageTitle: document.getElementById('page-title'),
+            lastSync: document.getElementById('last-sync'),
+            connectionIndicator: document.getElementById('connection-indicator'),
+            connectionText: document.getElementById('connection-text'),
+            globalLoader: document.getElementById('global-loader'),
+            refreshBtn: document.getElementById('refresh-btn'),
+            toastContainer: document.getElementById('toast-container'),
+
+            // Metrics Display Cards
+            cardTotalUsers: document.getElementById('card-total-users'),
+            cardTotalAttempts: document.getElementById('card-total-attempts'),
+            cardSuccessAttempts: document.getElementById('card-success-attempts'),
+            cardFailedAttempts: document.getElementById('card-failed-attempts'),
+            cardWebViewUsers: document.getElementById('card-webview-users'),
+            cardBrowserUsers: document.getElementById('card-browser-users'),
+            recentAttemptsBody: document.getElementById('recent-attempts-body'),
+
+            // Configuration Form Input Elements
+            settingsForm: document.getElementById('settings-form'),
+            settingPattern: document.getElementById('setting-pattern'),
+            settingHint: document.getElementById('setting-hint'),
+            settingVersion: document.getElementById('setting-version'),
+            settingNotice: document.getElementById('setting-notice'),
+            settingMaintenance: document.getElementById('setting-maintenance'),
+
+            // Filtering Inputs
+            filterAttemptsUid: document.getElementById('filter-attempts-uid'),
+            filterAttemptsStatus: document.getElementById('filter-attempts-status'),
+            filterAttemptsDevice: document.getElementById('filter-attempts-device'),
+            attemptsTableBody: document.getElementById('attempts-table-body'),
+
+            filterUsersUid: document.getElementById('filter-users-uid'),
+            filterUsersDevice: document.getElementById('filter-users-device'),
+            usersTableBody: document.getElementById('users-table-body'),
+
+            // History elements
+            historyTableBody: document.getElementById('history-table-body'),
+            historySelectAll: document.getElementById('history-select-all'),
+            historySelectedCount: document.getElementById('history-selected-count'),
+            historyBtnDelete: document.getElementById('history-btn-delete')
+        };
+
+        // Track selected items for batch operations
+        let selectedHistoryItems = new Set();
+
+        // Initialize Web Portal Logic Core
+        function initApp() {
+            setupSidebarNavigation();
+            setupFirebaseSync();
+            setupRealTimeFilters();
+            setupSettingsFormSubmit();
+            setupHistoryManagerEvents();
+
+            // Refresh action listener
+            elements.refreshBtn.addEventListener('click', () => {
+                showToast('Synchronized', 'Re-verified Firebase data feeds.', 'info');
+                updateSyncTimestamp();
+            });
+        }
+
+        // Toggles active navigation tabs cleanly
+        function setupSidebarNavigation() {
+            elements.navButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const currentBtn = e.currentTarget;
+                    const targetTab = currentBtn.getAttribute('data-target');
+
+                    elements.navButtons.forEach(b => b.classList.remove('active'));
+                    elements.tabs.forEach(t => t.classList.remove('active'));
+
+                    currentBtn.classList.add('active');
+                    const targetEl = document.getElementById(targetTab);
+                    if (targetEl) targetEl.classList.add('active');
+
+                    elements.pageTitle.textContent = currentBtn.querySelector('span').textContent.trim();
+                });
+            });
+
+            // "View All" link routing fallback inside component cards
+            document.querySelectorAll('.view-all-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const target = e.currentTarget.getAttribute('data-target');
+                    const correspondingNav = document.querySelector(`.nav-btn[data-target="${target}"]`);
+                    if (correspondingNav) correspondingNav.click();
+                });
+            });
+        }
+
+        // Setup real-time listeners for all key paths in Realtime Database
+        function setupFirebaseSync() {
+            // Track network state changes
+            const connectedRef = ref(db, ".info/connected");
+            onValue(connectedRef, (snap) => {
+                if (snap.val() === true) {
+                    elements.connectionIndicator.classList.remove('offline');
+                    elements.connectionIndicator.classList.add('online');
+                    elements.connectionText.textContent = "Live Stream On";
+                } else {
+                    elements.connectionIndicator.classList.remove('online');
+                    elements.connectionIndicator.classList.add('offline');
+                    elements.connectionText.textContent = "Offline / Connection Lost";
+                }
+            });
+
+            let settingsLoaded = false;
+            let usersLoaded = false;
+            let attemptsLoaded = false;
+
+            const hideLoaderIfReady = () => {
+                if (settingsLoaded && usersLoaded && attemptsLoaded) {
+                    elements.globalLoader.classList.add('hidden');
+                }
+            };
+
+            // Read settings/ node
+            const settingsRef = ref(db, 'settings');
+            onValue(settingsRef, (snapshot) => {
+                state.settings = snapshot.val() || {};
+                populateSettingsInputs(state.settings);
+                settingsLoaded = true;
+                updateSyncTimestamp();
+                hideLoaderIfReady();
+            }, (error) => {
+                showToast('Settings Connection Failed', error.message, 'error');
+            });
+
+            // Read users/ node
+            const usersRef = ref(db, 'users');
+            onValue(usersRef, (snapshot) => {
+                state.users = snapshot.val() || {};
+                processDynamicDataFeeds();
+                usersLoaded = true;
+                hideLoaderIfReady();
+            }, (error) => {
+                showToast('Users Directory Sync Error', error.message, 'error');
+            });
+
+            // Read attempts/ node
+            const attemptsRef = ref(db, 'attempts');
+            onValue(attemptsRef, (snapshot) => {
+                state.attempts = snapshot.val() || {};
+                processDynamicDataFeeds();
+                attemptsLoaded = true;
+                hideLoaderIfReady();
+            }, (error) => {
+                showToast('Unlock Attempts Log Error', error.message, 'error');
+            });
+        }
+
+        // Process data recalculations on updates
+        function processDynamicDataFeeds() {
+            updateSyncTimestamp();
+            
+            const metrics = calculateMetricsAndLogs();
+            renderDashboardCards(metrics);
+            renderDashboardRecentLogs(metrics.allAttemptsList);
+            
+            applyAttemptsFilter();
+            applyUsersFilter();
+            renderHistoryView(metrics.allAttemptsList);
+        }
+
+        // Aggregate counts, status metrics, and device type distributions
+        function calculateMetricsAndLogs() {
+            const totalUsers = Object.keys(state.users).length;
+            let totalAttempts = 0;
+            let successfulAttemptsCount = 0;
+            let failedAttemptsCount = 0;
+            let webviewUsersCount = 0;
+            let browserUsersCount = 0;
+
+            const allAttemptsList = [];
+
+            // Classify current users by device profile
+            Object.keys(state.users).forEach(uid => {
+                const u = state.users[uid];
+                if (u && u.deviceType) {
+                    const dt = String(u.deviceType).toLowerCase();
+                    if (dt.includes('webview')) {
+                        webviewUsersCount++;
+                    } else {
+                        browserUsersCount++;
+                    }
+                }
+            });
+
+            // Traverse attempts/{uid}/{attemptId} records
+            Object.keys(state.attempts).forEach(uid => {
+                const userAttempts = state.attempts[uid] || {};
+                Object.keys(userAttempts).forEach(attemptId => {
+                    const attempt = userAttempts[attemptId] || {};
+                    totalAttempts++;
+                    
+                    const isSuccess = String(attempt.status || '').trim().toLowerCase() === 'success';
+                    if (isSuccess) {
+                        successfulAttemptsCount++;
+                    } else {
+                        failedAttemptsCount++;
+                    }
+
+                    allAttemptsList.push({
+                        uid: uid,
+                        attemptId: attemptId,
+                        status: attempt.status || 'failed',
+                        enteredPattern: attempt.enteredPattern || '-',
+                        deviceType: attempt.deviceType || 'Unknown',
+                        browser: attempt.browser || 'Unknown',
+                        userAgent: attempt.userAgent || '-',
+                        date: attempt.date || '-',
+                        time: attempt.time || '-',
+                        timestamp: attempt.timestamp || 0
+                    });
+                });
+            });
+
+            // Sort newest actions first based on epoch timestamp
+            allAttemptsList.sort((a, b) => b.timestamp - a.timestamp);
+
+            return {
+                totalUsers,
+                totalAttempts,
+                success: successfulAttemptsCount,
+                failed: failedAttemptsCount,
+                webviewUsers: webviewUsersCount,
+                browserUsers: browserUsersCount,
+                allAttemptsList
+            };
+        }
+
+        // Populate Dashboard UI Elements
+        function renderDashboardCards(metrics) {
+            elements.cardTotalUsers.textContent = metrics.totalUsers;
+            elements.cardTotalAttempts.textContent = metrics.totalAttempts;
+            elements.cardSuccessAttempts.textContent = metrics.success;
+            elements.cardFailedAttempts.textContent = metrics.failed;
+            elements.cardWebViewUsers.textContent = metrics.webviewUsers;
+            elements.cardBrowserUsers.textContent = metrics.browserUsers;
+        }
+
+        // Populate Dashboard Activity Table
+        function renderDashboardRecentLogs(flatAttempts) {
+            const tbody = elements.recentAttemptsBody;
+            tbody.innerHTML = '';
+
+            const displayLimit = flatAttempts.slice(0, 5);
+
+            if (displayLimit.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center">No recent unlock events detected.</td></tr>`;
+                return;
+            }
+
+            displayLimit.forEach(att => {
+                const tr = document.createElement('tr');
+                const badgeClass = att.status === 'success' ? 'badge-success' : 'badge-danger';
+                const deviceBadgeClass = att.deviceType.toLowerCase() === 'webview' ? 'badge-cyan' : 'badge-neutral';
+
+                tr.innerHTML = `
+                    <td><span class="ua-column" title="${att.uid}">${att.uid}</span></td>
+                    <td>${att.date} <small style="display:block; color:var(--text-muted);">${att.time}</small></td>
+                    <td><span class="badge ${badgeClass}">${att.status}</span></td>
+                    <td><span class="badge ${deviceBadgeClass}">${att.deviceType}</span></td>
+                    <td>${att.browser}</td>
+                    <td><code>${att.enteredPattern}</code></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Populate form fields with Firebase settings data
+        function populateSettingsInputs(settings) {
+            elements.settingPattern.value = settings.pattern || '';
+            elements.settingHint.value = settings.hintLine || '';
+            elements.settingVersion.value = settings.latestVersion || '';
+            elements.settingNotice.value = settings.notice || '';
+            elements.settingMaintenance.checked = !!settings.maintenance;
+        }
+
+        // Sync Search inputs with UI re-evaluation loops
+        function setupRealTimeFilters() {
+            elements.filterAttemptsUid.addEventListener('input', applyAttemptsFilter);
+            elements.filterAttemptsStatus.addEventListener('change', applyAttemptsFilter);
+            elements.filterAttemptsDevice.addEventListener('change', applyAttemptsFilter);
+
+            elements.filterUsersUid.addEventListener('input', applyUsersFilter);
+            elements.filterUsersDevice.addEventListener('change', applyUsersFilter);
+        }
+
+        // Processes filtering conditions dynamically on attempts
+        function applyAttemptsFilter() {
+            const { allAttemptsList } = calculateMetricsAndLogs();
+            const uidQuery = elements.filterAttemptsUid.value.trim().toLowerCase();
+            const statusQuery = elements.filterAttemptsStatus.value;
+            const deviceQuery = elements.filterAttemptsDevice.value;
+
+            const filtered = allAttemptsList.filter(item => {
+                const matchesUid = !uidQuery || item.uid.toLowerCase().includes(uidQuery);
+                const matchesStatus = !statusQuery || item.status.toLowerCase() === statusQuery;
+                const matchesDevice = !deviceQuery || item.deviceType.toLowerCase() === deviceQuery;
+                return matchesUid && matchesStatus && matchesDevice;
+            });
+
+            renderAttemptsViewTable(filtered);
+        }
+
+        // Render Attempts Tracking View
+        function renderAttemptsViewTable(list) {
+            const tbody = elements.attemptsTableBody;
+            tbody.innerHTML = '';
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center">No logs align with selected filter query.</td></tr>`;
+                return;
+            }
+
+            list.forEach(att => {
+                const tr = document.createElement('tr');
+                const statusBadge = att.status === 'success' ? 'badge-success' : 'badge-danger';
+                const devBadge = att.deviceType.toLowerCase() === 'webview' ? 'badge-cyan' : 'badge-neutral';
+
+                tr.innerHTML = `
+                    <td><span class="ua-column" title="${att.uid}">${att.uid}</span></td>
+                    <td>
+                        <span style="font-size:0.85rem">${att.date}</span>
+                        <span style="display:block; font-size:0.75rem; color:var(--text-muted);">${att.time}</span>
+                    </td>
+                    <td><span class="badge ${statusBadge}">${att.status}</span></td>
+                    <td><span class="badge ${devBadge}">${att.deviceType}</span></td>
+                    <td>${att.browser}</td>
+                    <td><code>${att.enteredPattern}</code></td>
+                    <td><div class="ua-column" title="${att.userAgent}">${att.userAgent}</div></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Processes filtering conditions dynamically on users database
+        function applyUsersFilter() {
+            const uidQuery = elements.filterUsersUid.value.trim().toLowerCase();
+            const deviceQuery = elements.filterUsersDevice.value;
+
+            const userKeys = Object.keys(state.users);
+            const calculatedAttempts = calculateMetricsAndLogs().allAttemptsList;
+
+            const matchedUsers = [];
+
+            userKeys.forEach(uid => {
+                const u = state.users[uid] || {};
+                const deviceType = u.deviceType || 'browser';
+                const browser = u.browser || 'Chrome';
+                const firstVisit = u.firstVisit || '-';
+                const lastSeen = u.lastSeen || '-';
+
+                const matchesUid = !uidQuery || uid.toLowerCase().includes(uidQuery);
+                const matchesDevice = !deviceQuery || deviceType.toLowerCase() === deviceQuery;
+
+                if (matchesUid && matchesDevice) {
+                    const userHistory = calculatedAttempts.filter(att => att.uid === uid);
+                    const totalAttempts = userHistory.length;
+                    const successAttempts = userHistory.filter(att => att.status === 'success').length;
+                    const failedAttempts = userHistory.filter(att => att.status === 'failed').length;
+
+                    matchedUsers.push({
+                        uid,
+                        deviceType,
+                        browser,
+                        firstVisit,
+                        lastSeen,
+                        totalAttempts,
+                        successAttempts,
+                        failedAttempts
+                    });
+                }
+            });
+
+            renderUsersViewTable(matchedUsers);
+        }
+
+        // Render Users Tracking Directory View
+        function renderUsersViewTable(list) {
+            const tbody = elements.usersTableBody;
+            tbody.innerHTML = '';
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center">No active user parameters fit the description.</td></tr>`;
+                return;
+            }
+
+            list.forEach(usr => {
+                const tr = document.createElement('tr');
+                const devBadge = usr.deviceType.toLowerCase() === 'webview' ? 'badge-cyan' : 'badge-neutral';
+
+                tr.innerHTML = `
+                    <td><span class="ua-column" title="${usr.uid}">${usr.uid}</span></td>
+                    <td><span class="badge ${devBadge}">${usr.deviceType}</span></td>
+                    <td>${usr.browser}</td>
+                    <td><span style="font-size:0.8rem">${usr.firstVisit}</span></td>
+                    <td><span style="font-size:0.8rem">${usr.lastSeen}</span></td>
+                    <td class="text-center"><strong>${usr.totalAttempts}</strong></td>
+                    <td class="text-center text-success">${usr.successAttempts}</td>
+                    <td class="text-center text-danger">${usr.failedAttempts}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Update settings in database on save trigger
+        function setupSettingsFormSubmit() {
+            elements.settingsForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const saveButton = document.getElementById('btn-save-settings');
+                const originalText = saveButton.innerHTML;
+
+                saveButton.disabled = true;
+                saveButton.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Writing Updates...`;
+
+                const updatedSettings = {
+                    pattern: elements.settingPattern.value.trim(),
+                    hintLine: elements.settingHint.value.trim(),
+                    maintenance: elements.settingMaintenance.checked,
+                    latestVersion: elements.settingVersion.value.trim(),
+                    notice: elements.settingNotice.value.trim()
+                };
+
+                const settingsRef = ref(db, 'settings');
+
+                update(settingsRef, updatedSettings)
+                    .then(() => {
+                        showToast('Success', 'Configuration settings published to site.', 'success');
+                    })
+                    .catch((err) => {
+                        showToast('Error', 'Write transaction rejected: ' + err.message, 'error');
+                    })
+                    .finally(() => {
+                        saveButton.disabled = false;
+                        saveButton.innerHTML = originalText;
+                    });
+            });
+        }
+
+        // -------------------------------------------------------------------------
+        // NEW FEATURE: HISTORY MANAGER (RECORDS DESTRUCTION AND INLINE EDITING)
+        // -------------------------------------------------------------------------
+        function setupHistoryManagerEvents() {
+            // Select All checkbox trigger
+            elements.historySelectAll.addEventListener('change', (e) => {
+                const checkboxes = elements.historyTableBody.querySelectorAll('.history-checkbox');
+                const isChecked = e.target.checked;
+                
+                checkboxes.forEach(box => {
+                    box.checked = isChecked;
+                    const pathKey = box.getAttribute('data-path');
+                    if (isChecked) {
+                        selectedHistoryItems.add(pathKey);
+                    } else {
+                        selectedHistoryItems.delete(pathKey);
+                    }
+                });
+                
+                updateHistoryUIControls();
+            });
+
+            // Delegate checkbox selection on individual rows
+            elements.historyTableBody.addEventListener('change', (e) => {
+                if (e.target.classList.contains('history-checkbox')) {
+                    const pathKey = e.target.getAttribute('data-path');
+                    if (e.target.checked) {
+                        selectedHistoryItems.add(pathKey);
+                    } else {
+                        selectedHistoryItems.delete(pathKey);
+                    }
+                    
+                    // Keep "Select All" checked state in sync
+                    const totalVisible = elements.historyTableBody.querySelectorAll('.history-checkbox').length;
+                    elements.historySelectAll.checked = (selectedHistoryItems.size === totalVisible && totalVisible > 0);
+                    
+                    updateHistoryUIControls();
+                }
+            });
+
+            // Inline modification blur & keypress delegation inside dynamic table rows
+            elements.historyTableBody.addEventListener('blur', (e) => {
+                if (e.target.classList.contains('editable-field')) {
+                    processInlineFieldSave(e.target);
+                }
+            }, true); // Use capturing phase to support delegation
+
+            elements.historyTableBody.addEventListener('keypress', (e) => {
+                if (e.target.classList.contains('editable-field') && e.key === 'Enter') {
+                    e.target.blur(); // Triggers the save function cleanly
+                }
+            });
+
+            // Bulk Delete Trigger (Locally Cleared instantly via Firebase Synchronization Engine)
+            elements.historyBtnDelete.addEventListener('click', async () => {
+                if (selectedHistoryItems.size === 0) return;
+
+                const count = selectedHistoryItems.size;
+                if (!confirm(`Are you sure you want to permanently erase ${count} selected records? This action modifies the database immediately.`)) {
+                    return;
+                }
+
+                elements.historyBtnDelete.disabled = true;
+                elements.historyBtnDelete.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Erasing...`;
+
+                const updatePayload = {};
+                selectedHistoryItems.forEach(path => {
+                    // Setting Firebase paths to null wipes the data both locally & in Firebase
+                    updatePayload[path] = null;
+                });
+
+                try {
+                    // Update the root to drop checked paths in parallel
+                    await update(ref(db), updatePayload);
+                    showToast('Data Cleared', `Successfully purged ${count} logs.`, 'success');
+                    selectedHistoryItems.clear();
+                    elements.historySelectAll.checked = false;
+                } catch (error) {
+                    showToast('Cleanup Error', `Wipe execution failed: ${error.message}`, 'error');
+                } finally {
+                    updateHistoryUIControls();
+                }
+            });
+        }
+
+        // Render History Section Panel
+        function renderHistoryView(flatAttempts) {
+            const tbody = elements.historyTableBody;
+            tbody.innerHTML = '';
+
+            if (flatAttempts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center">No stored history files currently found in active paths.</td></tr>`;
+                elements.historySelectAll.checked = false;
+                updateHistoryUIControls();
+                return;
+            }
+
+            flatAttempts.forEach(att => {
+                const pathReference = `attempts/${att.uid}/${att.attemptId}`;
+                const isSelected = selectedHistoryItems.has(pathReference);
+                
+                const tr = document.createElement('tr');
+                const badgeClass = att.status === 'success' ? 'badge-success' : 'badge-danger';
+                
+                tr.innerHTML = `
+                    <td class="text-center">
+                        <input type="checkbox" class="custom-checkbox history-checkbox" 
+                            data-path="${pathReference}" ${isSelected ? 'checked' : ''}>
+                    </td>
+                    <td><span class="ua-column" title="${att.uid}">${att.uid}</span></td>
+                    <td>${att.date} <small style="display:block; color:var(--text-muted);">${att.time}</small></td>
+                    <td><span class="badge ${badgeClass}">${att.status}</span></td>
+                    <td><span class="badge badge-neutral">${att.deviceType}</span></td>
+                    <td>
+                        <input type="text" class="editable-field" value="${att.enteredPattern}" 
+                            data-uid="${att.uid}" data-attemptid="${att.attemptId}" data-path="${pathReference}">
+                    </td>
+                    <td><code style="font-size:0.75rem; color:var(--accent-purple);">${pathReference}</code></td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Re-verify 'Select All' checked state post render
+            const totalCheckboxCount = tbody.querySelectorAll('.history-checkbox').length;
+            elements.historySelectAll.checked = (selectedHistoryItems.size === totalCheckboxCount && totalCheckboxCount > 0);
+            updateHistoryUIControls();
+        }
+
+        // Updates selected count displays & triggers enabling/disabling delete actions
+        function updateHistoryUIControls() {
+            const selectedCount = selectedHistoryItems.size;
+            elements.historySelectedCount.textContent = `${selectedCount} items marked for deletion`;
+            
+            if (selectedCount > 0) {
+                elements.historyBtnDelete.disabled = false;
+                elements.historyBtnDelete.textContent = `Delete Selected (${selectedCount})`;
+            } else {
+                elements.historyBtnDelete.disabled = true;
+                elements.historyBtnDelete.textContent = `Delete Selected`;
+            }
+        }
+
+        // Checks modifications locally and pushes them directly to Realtime Database
+        async function processInlineFieldSave(inputElement) {
+            const path = inputElement.getAttribute('data-path');
+            const uid = inputElement.getAttribute('data-uid');
+            const attemptId = inputElement.getAttribute('data-attemptid');
+            const newValue = inputElement.value.trim();
+
+            // Locate cached pattern to minimize writing redundant mutations
+            const cachedPattern = state.attempts[uid] && state.attempts[uid][attemptId] ? 
+                state.attempts[uid][attemptId].enteredPattern : null;
+
+            if (newValue === cachedPattern) return; // Disregard unmodified blurs
+
+            try {
+                const targetRef = ref(db, path);
+                const valueChange = { enteredPattern: newValue };
+                
+                await update(targetRef, valueChange);
+                showToast('Synchronized', 'Entry modifications pushed successfully.', 'success');
+            } catch (error) {
+                showToast('Update Failed', error.message, 'error');
+                // Revert input field value back to cached pattern value
+                inputElement.value = cachedPattern || '';
+            }
+        }
+
+        // Core UI helpers
+        function updateSyncTimestamp() {
+            const now = new Date();
+            const formatted = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            elements.lastSync.textContent = `Last synced: ${formatted}`;
+        }
+
+        function showToast(title, text, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            
+            let icon = 'fa-circle-info';
+            if (type === 'success') icon = 'fa-circle-check';
+            if (type === 'error') icon = 'fa-circle-xmark';
+
+            toast.innerHTML = `
+                <i class="fa-solid ${icon}"></i>
+                <div>
+                    <strong>${title}</strong>
+                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">${text}</p>
+                </div>
+            `;
+
+            elements.toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s ease-in forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // Inject dynamic animations fallback inside head
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+        @keyframes fadeOut {
+            to { opacity: 0; transform: translateY(-10px); }
+        }`;
+        document.head.appendChild(styleSheet);
+
+        // Initialize application on page boot
+        initApp();
+    </script>
+</body>
+</html>
