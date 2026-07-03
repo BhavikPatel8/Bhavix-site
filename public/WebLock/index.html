@@ -225,6 +225,23 @@
             80%       { transform: translateX(5px); }
         }
 
+        /* Maintenance UI Styling overrides */
+        .maintenance-container {
+            display: none;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .maintenance-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+
         /* Responsive Modifications */
         @media (max-width: 400px) {    
             .container {        
@@ -259,56 +276,201 @@
 <body>
 
 <div class="container" id="mainContainer">    
-    <h2>webLock 🔐</h2>    
-    <p class="subtitle">Enter Pattern to Unlock *[28}</p>
+    <!-- Standard Lock Screen Interface View Wrapper -->
+    <div id="lockInterface">
+        <h2>webLock 🔐</h2>    
+        <p class="subtitle" id="hintLine">Connecting to system...</p>
 
-    <!-- Pattern Display -->    
-    <div class="pattern-display">        
-        <div class="pattern-dot"></div>        
-        <div class="pattern-dot"></div>        
-        <div class="pattern-dot"></div>        
-        <div class="pattern-dot"></div>    
+        <!-- Pattern Display -->    
+        <div class="pattern-display">        
+            <div class="pattern-dot"></div>        
+            <div class="pattern-dot"></div>        
+            <div class="pattern-dot"></div>        
+            <div class="pattern-dot"></div>    
+        </div>
+
+        <!-- Number Pad -->    
+        <div class="number-pad">        
+            <button class="number-btn" onclick="addToPattern('1')">1</button>        
+            <button class="number-btn" onclick="addToPattern('2')">2</button>        
+            <button class="number-btn" onclick="addToPattern('3')">3</button>        
+            <button class="number-btn" onclick="addToPattern('4')">4</button>        
+            <button class="number-btn" onclick="addToPattern('5')">5</button>        
+            <button class="number-btn" onclick="addToPattern('6')">6</button>        
+            <button class="number-btn" onclick="addToPattern('7')">7</button>        
+            <button class="number-btn" onclick="addToPattern('8')">8</button>        
+            <button class="number-btn" onclick="addToPattern('9')">9</button>    
+        </div>
+
+        <!-- Action Buttons -->    
+        <div class="action-buttons">        
+            <button class="action-btn clear-btn" onclick="clearPattern()">Clear</button>        
+            <button class="action-btn submit-btn" onclick="checkPattern()">Unlock</button>    
+        </div>
+
+        <p id="error"></p>
     </div>
 
-    <!-- Number Pad -->    
-    <div class="number-pad">        
-        <button class="number-btn" onclick="addToPattern('1')">1</button>        
-        <button class="number-btn" onclick="addToPattern('2')">2</button>        
-        <button class="number-btn" onclick="addToPattern('3')">3</button>        
-        <button class="number-btn" onclick="addToPattern('4')">4</button>        
-        <button class="number-btn" onclick="addToPattern('5')">5</button>        
-        <button class="number-btn" onclick="addToPattern('6')">6</button>        
-        <button class="number-btn" onclick="addToPattern('7')">7</button>        
-        <button class="number-btn" onclick="addToPattern('8')">8</button>        
-        <button class="number-btn" onclick="addToPattern('9')">9</button>    
+    <!-- Dynamic Maintenance View Overlay (Managed in real-time) -->
+    <div id="maintenanceInterface" class="maintenance-container">
+        <div class="maintenance-icon">🛠️</div>
+        <h2 style="margin-bottom: 12px;">Under Maintenance</h2>
+        <p class="subtitle" id="maintenanceNotice" style="margin-bottom: 0;">We are updating the system. Please try again shortly.</p>
     </div>
-
-    <!-- Action Buttons -->    
-    <div class="action-buttons">        
-        <button class="action-btn clear-btn" onclick="clearPattern()">Clear</button>        
-        <button class="action-btn submit-btn" onclick="checkPattern()">Unlock</button>    
-    </div>
-
-    <p id="error"></p>
 </div>
 
-<script>
-    function fixViewportHeight() {    
-        document.body.style.height = window.innerHeight + "px";
-    }
+<!-- Firebase Modular Integration logic -->
+<script type="module">
+    // Import modular Firebase SDK (v10 CDN endpoints)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { 
+        getDatabase, 
+        ref, 
+        onValue, 
+        get, 
+        set, 
+        update, 
+        push 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    window.addEventListener("load", fixViewportHeight);
-    window.addEventListener("resize", fixViewportHeight);   
+    // Dynamic configuration block mapping directly to Admin Portal settings [1]
+    const firebaseConfig = {
+        apiKey: "AIzaSyBYsiWoEOWJ35sVAIdwj1tlLzmpSEyaE5o",
+        authDomain: "bhavix-site.firebaseapp.com",
+        databaseURL: "https://bhavix-site-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "bhavix-site",
+        storageBucket: "bhavix-site.firebasestorage.app",
+        messagingSenderId: "973089920463",
+        appId: "1:973089920463:web:dd47c817434a852a56eeba",
+        measurementId: "G-R05Y9Z9KW6"
+    };
 
-    let pattern = [];
-    const correctPattern = ['1', '6', '1', '6'];
+    // Initialize application connection
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Document nodes references
+    const hintLineElement = document.getElementById('hintLine');
+    const lockInterface = document.getElementById('lockInterface');
+    const maintenanceInterface = document.getElementById('maintenanceInterface');
+    const maintenanceNotice = document.getElementById('maintenanceNotice');
     const patternDots = document.querySelectorAll('.pattern-dot');
     const errorMsg = document.getElementById('error');
     const mainContainer = document.getElementById('mainContainer');
-    let isChecking = false; // State flag to avoid double submission issues
 
+    // State parameters
+    let pattern = [];
+    let correctPatternString = "1616"; // Dynamically synchronized with settings/pattern
+    let isChecking = false;
+    let isMaintenanceActive = false;
+
+    // Browser parsing helper
+    function getBrowserName(ua) {
+        if (/samsungbrowser/i.test(ua)) return "Samsung Internet";
+        if (/edg/i.test(ua)) return "Edge";
+        
+        // Detect WebView context
+        const isWebView = /(wv|WebView|iPh.*AppleWebKit.*Mobile.*Saf)/i.test(ua);
+        if (isWebView && !/chrome/i.test(ua)) return "WebView";
+        
+        if (/chrome|crios/i.test(ua)) return "Chrome";
+        if (/firefox|fxios/i.test(ua)) return "Firefox";
+        if (/safari/i.test(ua) && !/chrome/i.test(ua)) return "Safari";
+        
+        return "Unknown";
+    }
+
+    // Device parsing helper
+    function getDeviceType(ua) {
+        const isWebView = /(wv|WebView|iPh.*AppleWebKit.*Mobile.*Saf)/i.test(ua) || 
+                          (window.Android && window.Android.showToast) || 
+                          (window.webkit && window.webkit.messageHandlers);
+        return isWebView ? "webview" : "browser";
+    }
+
+    // UID initialization & sync logic
+    async function syncAndInitializeUser() {
+        let uid = localStorage.getItem('webLockUID');
+        if (!uid) {
+            // Generate structured client UID matching existing patterns
+            uid = 'uid_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
+            localStorage.setItem('webLockUID', uid);
+        }
+
+        const userAgent = navigator.userAgent;
+        const deviceType = getDeviceType(userAgent);
+        const browser = getBrowserName(userAgent);
+
+        const now = new Date();
+        const dateString = now.toLocaleDateString();
+        const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const currentTimestampFormatted = `${dateString} ${timeString}`;
+
+        const userRecordRef = ref(db, `users/${uid}`);
+
+        try {
+            // Attempt to retrieve pre-existing user metadata to preserve firstVisit status
+            const snapshot = await get(userRecordRef);
+            const data = snapshot.val();
+
+            if (!data || !data.firstVisit) {
+                // Initialize clean user profiles mapping key details
+                await set(userRecordRef, {
+                    deviceType,
+                    browser,
+                    userAgent,
+                    firstVisit: currentTimestampFormatted,
+                    lastSeen: currentTimestampFormatted
+                });
+            } else {
+                // Dynamic update lastseen timestamp metadata
+                await update(userRecordRef, {
+                    lastSeen: currentTimestampFormatted
+                });
+            }
+        } catch (error) {
+            console.error("Failed user metadata sync transaction:", error);
+        }
+
+        return uid;
+    }
+
+    // Setup active state real-time listener mapping
+    function setupRealtimeSettings() {
+        const settingsRef = ref(db, 'settings');
+        onValue(settingsRef, (snapshot) => {
+            const settings = snapshot.val() || {};
+            
+            // 1. Pattern synchronization
+            if (settings.pattern) {
+                correctPatternString = String(settings.pattern).trim();
+            }
+
+            // 2. Hint Line synchronization
+            if (settings.hintLine) {
+                hintLineElement.textContent = settings.hintLine;
+            } else {
+                hintLineElement.textContent = "Enter Pattern to Unlock";
+            }
+
+            // 3. Maintenance control
+            isMaintenanceActive = !!settings.maintenance;
+            if (isMaintenanceActive) {
+                lockInterface.style.display = 'none';
+                maintenanceInterface.style.display = 'block';
+                maintenanceNotice.textContent = settings.notice || "System maintenance in progress. Please check back later.";
+            } else {
+                lockInterface.style.display = 'block';
+                maintenanceInterface.style.display = 'none';
+            }
+        }, (error) => {
+            console.error("Firebase dynamic settings subscription failure:", error);
+        });
+    }
+
+    // Unified interface actions
     function addToPattern(num) {    
-        if (isChecking || pattern.length >= 4) return;
+        if (isChecking || isMaintenanceActive || pattern.length >= 4) return;
 
         pattern.push(num);        
         updatePatternDisplay();
@@ -333,8 +495,7 @@
         errorMsg.className = '';
     }
 
-    function checkPattern() {    
-        // Do not process checks if the user clicks Unlock button prematurely
+    async function checkPattern() {    
         if (pattern.length < 4) {
             errorMsg.innerHTML = 'Enter 4 digits';
             return;
@@ -342,7 +503,43 @@
 
         isChecking = true;
 
-        if (pattern.join('') === correctPattern.join('')) {
+        const enteredPatternString = pattern.join('');
+        const isSuccess = enteredPatternString === correctPatternString;
+
+        // Log attempts details immediately [1]
+        try {
+            const uid = localStorage.getItem('webLockUID') || 'anonymous_uid';
+            const userAgent = navigator.userAgent;
+            const deviceType = getDeviceType(userAgent);
+            const browser = getBrowserName(userAgent);
+
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const dateString = `${year}-${month}-${day}`;
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+
+            const attemptData = {
+                status: isSuccess ? "success" : "failed",
+                enteredPattern: enteredPatternString,
+                deviceType,
+                browser,
+                userAgent,
+                date: dateString,
+                time: timeString,
+                timestamp: Date.now()
+            };
+
+            const attemptsListRef = ref(db, `attempts/${uid}`);
+            const newAttemptRef = push(attemptsListRef);
+            await set(newAttemptRef, attemptData);
+        } catch (error) {
+            console.error("Attempt log reporting failure:", error);
+        }
+
+        // Manage UI response transitions
+        if (isSuccess) {
             errorMsg.className = 'success';        
             errorMsg.innerHTML = 'Access Granted ✨';
 
@@ -352,7 +549,6 @@
             });
 
             setTimeout(() => {            
-                // Changed to window.location.href for better compatibility in WebViews
                 window.location.href = 'https://bhavix-site.web.app/AccessPage';
             }, 1000);
 
@@ -366,10 +562,24 @@
             setTimeout(clearPattern, 400);    
         }
     }
+
+    // Attach local scope handlers directly to the global window scope for inline markup compatibility
+    window.addToPattern = addToPattern;
+    window.clearPattern = clearPattern;
+    window.checkPattern = checkPattern;
+
+    // Viewport lock adaptation logic
+    function fixViewportHeight() {    
+        document.body.style.height = window.innerHeight + "px";
+    }
+
+    window.addEventListener("load", fixViewportHeight);
+    window.addEventListener("resize", fixViewportHeight);
+
+    // Run user verification, registration, and subscribe to settings changes on initial script run
+    syncAndInitializeUser().then(() => {
+        setupRealtimeSettings();
+    });
 </script>
 </body>
 </html>
-
-
-
-
