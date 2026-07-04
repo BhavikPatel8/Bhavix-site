@@ -472,12 +472,12 @@
         }
 
         .badge-cyan {
-            background: rgba(9, 132, 227, 0.1);
+            background: rgba(9, 132, 227, 0.15);
             color: #0984e3;
         }
 
         .badge-android {
-            background: rgba(61, 220, 132, 0.1);
+            background: rgba(61, 220, 132, 0.15);
             color: var(--accent-android);
         }
 
@@ -971,7 +971,7 @@
                                     <th>Date/Time</th>
                                     <th>Status</th>
                                     <th>Platform/Source</th>
-                                    <th>Device / Browser</th>
+                                    <th>Device Name / Engine</th>
                                     <th>Entered Pattern</th>
                                 </tr>
                             </thead>
@@ -1083,7 +1083,7 @@
                                     <th>Timestamp</th>
                                     <th>Status</th>
                                     <th>Source</th>
-                                    <th>Hardware / Engine</th>
+                                    <th>Device Name / Engine</th>
                                     <th>Pattern Entered</th>
                                     <th>User Agent</th>
                                 </tr>
@@ -1127,7 +1127,7 @@
                                 <tr>
                                     <th>UID</th>
                                     <th>Source</th>
-                                    <th>Device Profile</th>
+                                    <th>Device Name</th>
                                     <th>Platform Engine / OS</th>
                                     <th>First Visit Date</th>
                                     <th>Last Active</th>
@@ -1178,7 +1178,7 @@
                                     <th>UID</th>
                                     <th>Date/Time</th>
                                     <th>Status</th>
-                                    <th>Hardware / Device</th>
+                                    <th>Device Name</th>
                                     <th>Entered Pattern (Editable)</th>
                                     <th>Firebase Reference Path</th>
                                 </tr>
@@ -1285,7 +1285,7 @@
         let selectedHistoryItems = new Set();
 
         // -------------------------------------------------------------------------
-        // ANDROID WEBVIEW DETECTOR HOOK (Supplied snippet integration) [1]
+        // ANDROID WEBVIEW DETECTOR HOOK (Transmitted app context tracker) [1]
         // -------------------------------------------------------------------------
         let clientMetadata = {
             source: "browser",
@@ -1303,7 +1303,7 @@
         function parseClientMetadata() {
             if (window.WebLockAppInfo) {
                 clientMetadata = window.WebLockAppInfo;
-                console.log("Admin Portal running inside Android app context: ", clientMetadata);
+                console.log("Admin running in App container: ", clientMetadata);
             }
         }
 
@@ -1442,7 +1442,7 @@
 
             const allAttemptsList = [];
 
-            // Classify current users by device profile source
+            // Classify current users by device profile source [1]
             Object.keys(state.users).forEach(uid => {
                 const u = state.users[uid];
                 if (u) {
@@ -1506,6 +1506,18 @@
             };
         }
 
+        // Formatting Helper to print clean device brand and model names dynamically [1]
+        function getDeviceDisplayName(item) {
+            if (item.source === 'android_app' && item.brand && item.brand !== '-' && item.model && item.model !== '-') {
+                const brandFormatted = item.brand.charAt(0).toUpperCase() + item.brand.slice(1);
+                return `${brandFormatted} ${item.model}`;
+            }
+            if (item.deviceType === 'webview') {
+                return 'WebView Client';
+            }
+            return item.browser || 'Browser Client';
+        }
+
         // Populate Dashboard UI Elements
         function renderDashboardCards(metrics) {
             elements.cardTotalUsers.textContent = metrics.totalUsers;
@@ -1532,22 +1544,20 @@
                 const tr = document.createElement('tr');
                 const badgeClass = att.status === 'success' ? 'badge-success' : 'badge-danger';
                 
-                // Set source badge UI elements
+                // Set source badge UI elements [1]
                 const isAndroidApp = att.source === 'android_app';
                 const sourceBadge = isAndroidApp 
                     ? `<span class="badge badge-android"><i class="fa-brands fa-android"></i> App</span>`
                     : `<span class="badge badge-neutral"><i class="fa-solid fa-globe"></i> Web</span>`;
 
-                const deviceDetails = isAndroidApp 
-                    ? `${att.brand} ${att.model}` 
-                    : att.browser;
+                const deviceName = getDeviceDisplayName(att);
 
                 tr.innerHTML = `
                     <td><span class="ua-column" title="${att.uid}">${att.uid}</span></td>
                     <td>${att.date} <small style="display:block; color:var(--text-muted);">${att.time}</small></td>
                     <td><span class="badge ${badgeClass}">${att.status}</span></td>
                     <td>${sourceBadge}</td>
-                    <td>${deviceDetails}</td>
+                    <td><strong>${deviceName}</strong></td>
                     <td><code>${att.enteredPattern}</code></td>
                 `;
                 tbody.appendChild(tr);
@@ -1594,7 +1604,7 @@
             renderAttemptsViewTable(filtered);
         }
 
-        // Render Attempts Tracking View with Android Integration Support [1]
+        // Render Attempts Tracking View with explicit Device Names [1]
         function renderAttemptsViewTable(list) {
             const tbody = elements.attemptsTableBody;
             tbody.innerHTML = '';
@@ -1614,9 +1624,10 @@
                     ? `<span class="badge badge-android"><i class="fa-brands fa-android"></i> Android App</span>`
                     : `<span class="badge badge-neutral"><i class="fa-solid fa-globe"></i> Web Browser</span>`;
 
-                const deviceProfile = isAndroidApp 
-                    ? `${att.brand} ${att.model} <small style="display:block; color:var(--accent-purple);">OS ${att.androidVersion}</small>` 
-                    : `${att.browser} <small style="display:block; color:var(--text-muted);">${att.deviceType}</small>`;
+                const deviceName = getDeviceDisplayName(att);
+                const subDetail = isAndroidApp 
+                    ? `<small style="display:block; color:var(--accent-purple);">OS ${att.androidVersion}</small>`
+                    : `<small style="display:block; color:var(--text-muted);">${att.deviceType}</small>`;
 
                 tr.innerHTML = `
                     <td><span class="ua-column" title="${att.uid}">${att.uid}</span></td>
@@ -1626,7 +1637,7 @@
                     </td>
                     <td><span class="badge ${statusBadge}">${att.status}</span></td>
                     <td>${sourceBadge}</td>
-                    <td>${deviceProfile}</td>
+                    <td><strong>${deviceName}</strong> ${subDetail}</td>
                     <td><code>${att.enteredPattern}</code></td>
                     <td><div class="ua-column" title="${att.userAgent}">${att.userAgent}</div></td>
                 `;
@@ -1685,7 +1696,7 @@
             renderUsersViewTable(matchedUsers);
         }
 
-        // Render Users Tracking Directory View
+        // Render Users Tracking Directory View showing Device Names clearly [1]
         function renderUsersViewTable(list) {
             const tbody = elements.usersTableBody;
             tbody.innerHTML = '';
@@ -1704,9 +1715,10 @@
                     ? `<span class="badge badge-android"><i class="fa-brands fa-android"></i> App</span>`
                     : `<span class="badge badge-neutral"><i class="fa-solid fa-globe"></i> Web</span>`;
 
-                const deviceProfile = isAndroidApp 
-                    ? `<strong>${usr.brand} ${usr.model}</strong>`
-                    : `Standard Web Client <small style="display:block; color:var(--text-muted);">${usr.deviceType}</small>`;
+                const deviceName = getDeviceDisplayName(usr);
+                const deviceProfileMarkup = isAndroidApp
+                    ? `<strong>${deviceName}</strong>`
+                    : `<span style="color:var(--text-muted);">${deviceName}</span>`;
 
                 const engineOrOS = isAndroidApp 
                     ? `Android ${usr.androidVersion} <small style="display:block; color:var(--text-muted);">SDK ${usr.sdkInt}</small>`
@@ -1715,7 +1727,7 @@
                 tr.innerHTML = `
                     <td><span class="ua-column" title="${usr.uid}">${usr.uid}</span></td>
                     <td>${sourceBadge}</td>
-                    <td>${deviceProfile}</td>
+                    <td>${deviceProfileMarkup}</td>
                     <td>${engineOrOS}</td>
                     <td><span style="font-size:0.8rem">${usr.firstVisit}</span></td>
                     <td><span style="font-size:0.8rem">${usr.lastSeen}</span></td>
@@ -1867,9 +1879,10 @@
                 const badgeClass = att.status === 'success' ? 'badge-success' : 'badge-danger';
 
                 // Display dynamic device hardware properties if available [1]
-                const deviceDetails = att.source === 'android_app'
-                    ? `<span style="color: var(--accent-android);"><i class="fa-brands fa-android"></i> ${att.brand} ${att.model}</span>`
-                    : `<span style="color: var(--text-muted);">${att.browser} (${att.deviceType})</span>`;
+                const deviceName = getDeviceDisplayName(att);
+                const deviceMarkup = att.source === 'android_app'
+                    ? `<span style="color: var(--accent-android); font-weight: 500;"><i class="fa-brands fa-android"></i> ${deviceName}</span>`
+                    : `<span style="color: var(--text-muted);">${deviceName} (${att.deviceType})</span>`;
                 
                 tr.innerHTML = `
                     <td class="text-center">
@@ -1879,7 +1892,7 @@
                     <td><span class="ua-column" title="${att.uid}">${att.uid}</span></td>
                     <td>${att.date} <small style="display:block; color:var(--text-muted);">${att.time}</small></td>
                     <td><span class="badge ${badgeClass}">${att.status}</span></td>
-                    <td>${deviceDetails}</td>
+                    <td>${deviceMarkup}</td>
                     <td>
                         <input type="text" class="editable-field" value="${att.enteredPattern}" 
                             data-uid="${att.uid}" data-attemptid="${att.attemptId}" data-path="${pathReference}">
