@@ -364,14 +364,30 @@
     let isChecking = false;
     let isMaintenanceActive = false;
 
+    // Default Client Metadata Object to store finalized statistics
+    let deviceInfo = {
+        deviceType: "browser",
+        source: "browser",
+        appName: "Standard Browser",
+        brand: "-",
+        manufacturer: "-",
+        model: "-",
+        device: "-",
+        product: "-",
+        androidVersion: "-",
+        sdkInt: 0,
+        browser: "Unknown",
+        userAgent: navigator.userAgent
+    };
+
     // Browser parsing helper
     function getBrowserName(ua) {
         if (/samsungbrowser/i.test(ua)) return "Samsung Internet";
         if (/edg/i.test(ua)) return "Edge";
         
         // Detect WebView context
-        const isWebView = /(wv|WebView|iPh.*AppleWebKit.*Mobile.*Saf)/i.test(ua);
-        if (isWebView && !/chrome/i.test(ua)) return "WebView";
+        const isWebView = /(wv|WebView|WebLockApp)/i.test(ua);
+        if (isWebView) return "WebView";
         
         if (/chrome|crios/i.test(ua)) return "Chrome";
         if (/firefox|fxios/i.test(ua)) return "Firefox";
@@ -382,24 +398,112 @@
 
     // Device parsing helper
     function getDeviceType(ua) {
-        const isWebView = /(wv|WebView|iPh.*AppleWebKit.*Mobile.*Saf)/i.test(ua) || 
+        const isWebView = /(wv|WebView|WebLockApp)/i.test(ua) || 
                           (window.Android && window.Android.showToast) || 
                           (window.webkit && window.webkit.messageHandlers);
         return isWebView ? "webview" : "browser";
     }
 
+    // Wait & Polling System to securely grab injected variables before processing DB operations
+    function resolveDeviceMetadata() {
+        return new Promise((resolve) => {
+            // Check instantly in case it loaded extremely fast
+            if (window.WebLockAppInfo) {
+                resolve(window.WebLockAppInfo);
+                return;
+            }
+
+            let isResolved = false;
+            
+            // Event listener trigger
+            const onAppReady = () => {
+                if (!isResolved) {
+                    isResolved = true;
+                    clearInterval(pollInterval);
+                    resolve(window.WebLockAppInfo);
+                }
+            };
+            window.addEventListener("WebLockAppInfoReady", onAppReady);
+
+            // Backup polling mechanism: checks every 200ms up to 2 seconds (10 checks max)
+            let checks = 0;
+            const maxChecks = 10;
+            const pollInterval = setInterval(() => {
+                checks++;
+                if (window.WebLockAppInfo) {
+                    if (!isResolved) {
+                        isResolved = true;
+                        window.removeEventListener("WebLockAppInfoReady", onAppReady);
+                        clearInterval(pollInterval);
+                        resolve(window.WebLockAppInfo);
+                    }
+                } else if (checks >= maxChecks) {
+                    if (!isResolved) {
+                        isResolved = true;
+                        window.removeEventListener("WebLockAppInfoReady", onAppReady);
+                        clearInterval(pollInterval);
+                        resolve(null); // Fallback to normal browser mode
+                    }
+                }
+            }, 200);
+        });
+    }
+
     // UID initialization & sync logic
     async function syncAndInitializeUser() {
+        // 1. Resolve Android App Metadata with timeout polling fallback
+        const appInfo = await resolveDeviceMetadata();
+        
+        // Print requested debug logs [1]
+        console.log("WebLockAppInfo:", window.WebLockAppInfo);
+
+        const ua = navigator.userAgent;
+        const parsedBrowser = getBrowserName(ua);
+        const parsedDeviceType = getDeviceType(ua);
+
+        if (appInfo) {
+            // Use injected Android WebView variables
+            deviceInfo = {
+                deviceType: appInfo.deviceType || "webview",
+                source: appInfo.source || "android_app",
+                appName: appInfo.appName || "WebLock",
+                brand: appInfo.brand || "-",
+                manufacturer: appInfo.manufacturer || "-",
+                model: appInfo.model || "-",
+                device: appInfo.device || "-",
+                product: appInfo.product || "-",
+                androidVersion: appInfo.androidVersion || "-",
+                sdkInt: appInfo.sdkInt || 0,
+                browser: "WebView",
+                userAgent: ua
+            };
+        } else {
+            // Use browser detection properties
+            deviceInfo = {
+                deviceType: parsedDeviceType,
+                source: "browser",
+                appName: "Standard Browser",
+                brand: "-",
+                manufacturer: "-",
+                model: "-",
+                device: "-",
+                product: "-",
+                androidVersion: "-",
+                sdkInt: 0,
+                browser: parsedBrowser,
+                userAgent: ua
+            };
+        }
+
+        // Print final constructed device specifications debug log [1]
+        console.log("Final device info saved:", deviceInfo);
+
+        // 2. Load / Generate UID reference
         let uid = localStorage.getItem('webLockUID');
         if (!uid) {
-            // Generate structured client UID matching existing patterns
             uid = 'uid_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
             localStorage.setItem('webLockUID', uid);
         }
-
-        const userAgent = navigator.userAgent;
-        const deviceType = getDeviceType(userAgent);
-        const browser = getBrowserName(userAgent);
 
         const now = new Date();
         const dateString = now.toLocaleDateString();
@@ -409,22 +513,21 @@
         const userRecordRef = ref(db, `users/${uid}`);
 
         try {
-            // Attempt to retrieve pre-existing user metadata to preserve firstVisit status
+            // Retrieve pre-existing user metadata to preserve firstVisit status
             const snapshot = await get(userRecordRef);
             const data = snapshot.val();
 
             if (!data || !data.firstVisit) {
-                // Initialize clean user profiles mapping key details
+                // Initialize clean user profiles mapping key details [1]
                 await set(userRecordRef, {
-                    deviceType,
-                    browser,
-                    userAgent,
+                    ...deviceInfo,
                     firstVisit: currentTimestampFormatted,
                     lastSeen: currentTimestampFormatted
                 });
             } else {
-                // Dynamic update lastseen timestamp metadata
+                // Dynamic update lastseen timestamp and keep device variables matching current build
                 await update(userRecordRef, {
+                    ...deviceInfo,
                     lastSeen: currentTimestampFormatted
                 });
             }
@@ -481,12 +584,14 @@
         }
     }
 
+    // Sync pattern view dots
     function updatePatternDisplay() {    
         patternDots.forEach((dot, index) => {        
             dot.classList.toggle('filled', index < pattern.length);    
         });
     }
 
+    // Clear dynamic states
     function clearPattern() {    
         pattern = [];    
         isChecking = false;
@@ -509,9 +614,6 @@
         // Log attempts details immediately [1]
         try {
             const uid = localStorage.getItem('webLockUID') || 'anonymous_uid';
-            const userAgent = navigator.userAgent;
-            const deviceType = getDeviceType(userAgent);
-            const browser = getBrowserName(userAgent);
 
             const now = new Date();
             const year = now.getFullYear();
@@ -523,12 +625,19 @@
             const attemptData = {
                 status: isSuccess ? "success" : "failed",
                 enteredPattern: enteredPatternString,
-                deviceType,
-                browser,
-                userAgent,
                 date: dateString,
                 time: timeString,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                
+                // Android + Browser Device Unified Context Parameters [1]
+                source: deviceInfo.source,
+                appName: deviceInfo.appName,
+                brand: deviceInfo.brand,
+                model: deviceInfo.model,
+                androidVersion: deviceInfo.androidVersion,
+                deviceType: deviceInfo.deviceType,
+                browser: deviceInfo.browser,
+                userAgent: deviceInfo.userAgent
             };
 
             const attemptsListRef = ref(db, `attempts/${uid}`);
