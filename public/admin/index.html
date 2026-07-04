@@ -26,6 +26,7 @@
             --accent-purple: #a29bfe;
             --accent-primary: #6c5ce7;
             --accent-hover: #5b4bc4;
+            --accent-android: #3ddc84;
             
             --text-primary: #f5f6fa;
             --text-muted: #a5b1c2;
@@ -256,7 +257,7 @@
         .card-icon.purple { background: rgba(162, 155, 254, 0.1); color: var(--accent-purple); }
         .card-icon.green { background: var(--color-success-glass); color: var(--color-success); }
         .card-icon.red { background: var(--color-danger-glass); color: var(--color-danger); }
-        .card-icon.orange { background: rgba(225, 112, 85, 0.1); color: #e17055; }
+        .card-icon.android { background: rgba(61, 220, 132, 0.1); color: var(--accent-android); }
         .card-icon.cyan { background: rgba(9, 132, 227, 0.1); color: #0984e3; }
 
         .card-info h3 {
@@ -450,6 +451,9 @@
             font-size: 0.75rem;
             font-weight: 600;
             text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .badge-success {
@@ -470,6 +474,11 @@
         .badge-cyan {
             background: rgba(9, 132, 227, 0.1);
             color: #0984e3;
+        }
+
+        .badge-android {
+            background: rgba(61, 220, 132, 0.1);
+            color: var(--accent-android);
         }
 
         .text-center { text-align: center; }
@@ -654,6 +663,7 @@
         .filter-dropdowns {
             display: flex;
             gap: 12px;
+            flex-wrap: wrap;
         }
 
         .filter-dropdowns select {
@@ -865,7 +875,6 @@
                 <button class="nav-btn" data-target="users">
                     <i class="fa-solid fa-users"></i> <span>Users Directory</span>
                 </button>
-                <!-- NEW Tab: History Manager -->
                 <button class="nav-btn" data-target="history">
                     <i class="fa-solid fa-clock-rotate-left"></i> <span>History Manager</span>
                 </button>
@@ -931,11 +940,12 @@
                             <p class="metric-value text-danger" id="card-failed-attempts">0</p>
                         </div>
                     </div>
+                    <!-- Updated with Android App Metrics -->
                     <div class="metric-card glass">
-                        <div class="card-icon orange"><i class="fa-solid fa-mobile-screen-button"></i></div>
+                        <div class="card-icon android"><i class="fa-brands fa-android"></i></div>
                         <div class="card-info">
-                            <h3>WebView Users</h3>
-                            <p class="metric-value" id="card-webview-users">0</p>
+                            <h3>Android App Users</h3>
+                            <p class="metric-value text-success" id="card-android-users">0</p>
                         </div>
                     </div>
                     <div class="metric-card glass">
@@ -960,8 +970,8 @@
                                     <th>UID</th>
                                     <th>Date/Time</th>
                                     <th>Status</th>
-                                    <th>Device</th>
-                                    <th>Browser</th>
+                                    <th>Platform/Source</th>
+                                    <th>Device / Browser</th>
                                     <th>Entered Pattern</th>
                                 </tr>
                             </thead>
@@ -1047,6 +1057,11 @@
                             <input type="text" id="filter-attempts-uid" placeholder="Search by UID...">
                         </div>
                         <div class="filter-dropdowns">
+                            <select id="filter-attempts-source">
+                                <option value="">All Sources</option>
+                                <option value="android_app">Android App</option>
+                                <option value="browser">Web Browser</option>
+                            </select>
                             <select id="filter-attempts-status">
                                 <option value="">All Statuses</option>
                                 <option value="success">Success Only</option>
@@ -1054,8 +1069,8 @@
                             </select>
                             <select id="filter-attempts-device">
                                 <option value="">All Devices</option>
-                                <option value="webview">WebView</option>
-                                <option value="browser">Web Browser</option>
+                                <option value="webview">WebView Only</option>
+                                <option value="browser">Browser Only</option>
                             </select>
                         </div>
                     </div>
@@ -1067,8 +1082,8 @@
                                     <th>UID</th>
                                     <th>Timestamp</th>
                                     <th>Status</th>
-                                    <th>Device</th>
-                                    <th>Browser</th>
+                                    <th>Source</th>
+                                    <th>Hardware / Engine</th>
                                     <th>Pattern Entered</th>
                                     <th>User Agent</th>
                                 </tr>
@@ -1093,6 +1108,11 @@
                             <input type="text" id="filter-users-uid" placeholder="Search by UID...">
                         </div>
                         <div class="filter-dropdowns">
+                            <select id="filter-users-source">
+                                <option value="">All Sources</option>
+                                <option value="android_app">Android App</option>
+                                <option value="browser">Web Browser</option>
+                            </select>
                             <select id="filter-users-device">
                                 <option value="">All Devices</option>
                                 <option value="webview">WebView Only</option>
@@ -1106,8 +1126,9 @@
                             <thead>
                                 <tr>
                                     <th>UID</th>
+                                    <th>Source</th>
                                     <th>Device Profile</th>
-                                    <th>Browser Engine</th>
+                                    <th>Platform Engine / OS</th>
                                     <th>First Visit Date</th>
                                     <th>Last Active</th>
                                     <th class="text-center">Total Att.</th>
@@ -1117,7 +1138,7 @@
                             </thead>
                             <tbody id="users-table-body">
                                 <tr>
-                                    <td colspan="8" class="text-center">No active users.</td>
+                                    <td colspan="9" class="text-center">No active users.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -1125,7 +1146,7 @@
                 </div>
             </section>
 
-            <!-- NEW TAB 5: History Section (Cleanup, Inline Modification, Batch Deletes) -->
+            <!-- TAB 5: History Section -->
             <section id="history" class="tab-content">
                 <div class="section-container glass">
                     <div class="section-header border-bottom">
@@ -1157,7 +1178,7 @@
                                     <th>UID</th>
                                     <th>Date/Time</th>
                                     <th>Status</th>
-                                    <th>Device Profile</th>
+                                    <th>Hardware / Device</th>
                                     <th>Entered Pattern (Editable)</th>
                                     <th>Firebase Reference Path</th>
                                 </tr>
@@ -1228,7 +1249,7 @@
             cardTotalAttempts: document.getElementById('card-total-attempts'),
             cardSuccessAttempts: document.getElementById('card-success-attempts'),
             cardFailedAttempts: document.getElementById('card-failed-attempts'),
-            cardWebViewUsers: document.getElementById('card-webview-users'),
+            cardAndroidUsers: document.getElementById('card-android-users'),
             cardBrowserUsers: document.getElementById('card-browser-users'),
             recentAttemptsBody: document.getElementById('recent-attempts-body'),
 
@@ -1240,13 +1261,16 @@
             settingNotice: document.getElementById('setting-notice'),
             settingMaintenance: document.getElementById('setting-maintenance'),
 
-            // Filtering Inputs
+            // Filtering Inputs - Attempts Tab
             filterAttemptsUid: document.getElementById('filter-attempts-uid'),
+            filterAttemptsSource: document.getElementById('filter-attempts-source'),
             filterAttemptsStatus: document.getElementById('filter-attempts-status'),
             filterAttemptsDevice: document.getElementById('filter-attempts-device'),
             attemptsTableBody: document.getElementById('attempts-table-body'),
 
+            // Filtering Inputs - Users Tab
             filterUsersUid: document.getElementById('filter-users-uid'),
+            filterUsersSource: document.getElementById('filter-users-source'),
             filterUsersDevice: document.getElementById('filter-users-device'),
             usersTableBody: document.getElementById('users-table-body'),
 
@@ -1259,6 +1283,36 @@
 
         // Track selected items for batch operations
         let selectedHistoryItems = new Set();
+
+        // -------------------------------------------------------------------------
+        // ANDROID WEBVIEW DETECTOR HOOK (Supplied snippet integration) [1]
+        // -------------------------------------------------------------------------
+        let clientMetadata = {
+            source: "browser",
+            deviceType: "browser",
+            appName: "Standard Browser",
+            brand: "-",
+            manufacturer: "-",
+            model: "-",
+            device: "-",
+            product: "-",
+            androidVersion: "-",
+            sdkInt: 0
+        };
+
+        function parseClientMetadata() {
+            if (window.WebLockAppInfo) {
+                clientMetadata = window.WebLockAppInfo;
+                console.log("Admin Portal running inside Android app context: ", clientMetadata);
+            }
+        }
+
+        window.addEventListener("WebLockAppInfoReady", () => {
+            parseClientMetadata();
+        });
+
+        // Run immediate check
+        parseClientMetadata();
 
         // Initialize Web Portal Logic Core
         function initApp() {
@@ -1383,20 +1437,20 @@
             let totalAttempts = 0;
             let successfulAttemptsCount = 0;
             let failedAttemptsCount = 0;
-            let webviewUsersCount = 0;
-            let browserUsersCount = 0;
+            let androidAppUsersCount = 0;
+            let standardBrowserUsersCount = 0;
 
             const allAttemptsList = [];
 
-            // Classify current users by device profile
+            // Classify current users by device profile source
             Object.keys(state.users).forEach(uid => {
                 const u = state.users[uid];
-                if (u && u.deviceType) {
-                    const dt = String(u.deviceType).toLowerCase();
-                    if (dt.includes('webview')) {
-                        webviewUsersCount++;
+                if (u) {
+                    const source = u.source || 'browser';
+                    if (source === 'android_app' || u.appName === 'WebLock') {
+                        androidAppUsersCount++;
                     } else {
-                        browserUsersCount++;
+                        standardBrowserUsersCount++;
                     }
                 }
             });
@@ -1415,6 +1469,7 @@
                         failedAttemptsCount++;
                     }
 
+                    // Map legacy & new Android fields dynamically with fallbacks [1]
                     allAttemptsList.push({
                         uid: uid,
                         attemptId: attemptId,
@@ -1425,7 +1480,14 @@
                         userAgent: attempt.userAgent || '-',
                         date: attempt.date || '-',
                         time: attempt.time || '-',
-                        timestamp: attempt.timestamp || 0
+                        timestamp: attempt.timestamp || 0,
+                        
+                        // New fields synced from Android app WebLock client [1]
+                        source: attempt.source || 'browser',
+                        brand: attempt.brand || '-',
+                        model: attempt.model || '-',
+                        androidVersion: attempt.androidVersion || '-',
+                        appName: attempt.appName || 'Standard'
                     });
                 });
             });
@@ -1438,8 +1500,8 @@
                 totalAttempts,
                 success: successfulAttemptsCount,
                 failed: failedAttemptsCount,
-                webviewUsers: webviewUsersCount,
-                browserUsers: browserUsersCount,
+                androidUsers: androidAppUsersCount,
+                browserUsers: standardBrowserUsersCount,
                 allAttemptsList
             };
         }
@@ -1450,7 +1512,7 @@
             elements.cardTotalAttempts.textContent = metrics.totalAttempts;
             elements.cardSuccessAttempts.textContent = metrics.success;
             elements.cardFailedAttempts.textContent = metrics.failed;
-            elements.cardWebViewUsers.textContent = metrics.webviewUsers;
+            elements.cardAndroidUsers.textContent = metrics.androidUsers;
             elements.cardBrowserUsers.textContent = metrics.browserUsers;
         }
 
@@ -1469,14 +1531,23 @@
             displayLimit.forEach(att => {
                 const tr = document.createElement('tr');
                 const badgeClass = att.status === 'success' ? 'badge-success' : 'badge-danger';
-                const deviceBadgeClass = att.deviceType.toLowerCase() === 'webview' ? 'badge-cyan' : 'badge-neutral';
+                
+                // Set source badge UI elements
+                const isAndroidApp = att.source === 'android_app';
+                const sourceBadge = isAndroidApp 
+                    ? `<span class="badge badge-android"><i class="fa-brands fa-android"></i> App</span>`
+                    : `<span class="badge badge-neutral"><i class="fa-solid fa-globe"></i> Web</span>`;
+
+                const deviceDetails = isAndroidApp 
+                    ? `${att.brand} ${att.model}` 
+                    : att.browser;
 
                 tr.innerHTML = `
                     <td><span class="ua-column" title="${att.uid}">${att.uid}</span></td>
                     <td>${att.date} <small style="display:block; color:var(--text-muted);">${att.time}</small></td>
                     <td><span class="badge ${badgeClass}">${att.status}</span></td>
-                    <td><span class="badge ${deviceBadgeClass}">${att.deviceType}</span></td>
-                    <td>${att.browser}</td>
+                    <td>${sourceBadge}</td>
+                    <td>${deviceDetails}</td>
                     <td><code>${att.enteredPattern}</code></td>
                 `;
                 tbody.appendChild(tr);
@@ -1495,10 +1566,12 @@
         // Sync Search inputs with UI re-evaluation loops
         function setupRealTimeFilters() {
             elements.filterAttemptsUid.addEventListener('input', applyAttemptsFilter);
+            elements.filterAttemptsSource.addEventListener('change', applyAttemptsFilter);
             elements.filterAttemptsStatus.addEventListener('change', applyAttemptsFilter);
             elements.filterAttemptsDevice.addEventListener('change', applyAttemptsFilter);
 
             elements.filterUsersUid.addEventListener('input', applyUsersFilter);
+            elements.filterUsersSource.addEventListener('change', applyUsersFilter);
             elements.filterUsersDevice.addEventListener('change', applyUsersFilter);
         }
 
@@ -1506,20 +1579,22 @@
         function applyAttemptsFilter() {
             const { allAttemptsList } = calculateMetricsAndLogs();
             const uidQuery = elements.filterAttemptsUid.value.trim().toLowerCase();
+            const sourceQuery = elements.filterAttemptsSource.value;
             const statusQuery = elements.filterAttemptsStatus.value;
             const deviceQuery = elements.filterAttemptsDevice.value;
 
             const filtered = allAttemptsList.filter(item => {
                 const matchesUid = !uidQuery || item.uid.toLowerCase().includes(uidQuery);
+                const matchesSource = !sourceQuery || item.source === sourceQuery;
                 const matchesStatus = !statusQuery || item.status.toLowerCase() === statusQuery;
                 const matchesDevice = !deviceQuery || item.deviceType.toLowerCase() === deviceQuery;
-                return matchesUid && matchesStatus && matchesDevice;
+                return matchesUid && matchesSource && matchesStatus && matchesDevice;
             });
 
             renderAttemptsViewTable(filtered);
         }
 
-        // Render Attempts Tracking View
+        // Render Attempts Tracking View with Android Integration Support [1]
         function renderAttemptsViewTable(list) {
             const tbody = elements.attemptsTableBody;
             tbody.innerHTML = '';
@@ -1532,7 +1607,16 @@
             list.forEach(att => {
                 const tr = document.createElement('tr');
                 const statusBadge = att.status === 'success' ? 'badge-success' : 'badge-danger';
-                const devBadge = att.deviceType.toLowerCase() === 'webview' ? 'badge-cyan' : 'badge-neutral';
+                
+                // Platform checks
+                const isAndroidApp = att.source === 'android_app';
+                const sourceBadge = isAndroidApp 
+                    ? `<span class="badge badge-android"><i class="fa-brands fa-android"></i> Android App</span>`
+                    : `<span class="badge badge-neutral"><i class="fa-solid fa-globe"></i> Web Browser</span>`;
+
+                const deviceProfile = isAndroidApp 
+                    ? `${att.brand} ${att.model} <small style="display:block; color:var(--accent-purple);">OS ${att.androidVersion}</small>` 
+                    : `${att.browser} <small style="display:block; color:var(--text-muted);">${att.deviceType}</small>`;
 
                 tr.innerHTML = `
                     <td><span class="ua-column" title="${att.uid}">${att.uid}</span></td>
@@ -1541,8 +1625,8 @@
                         <span style="display:block; font-size:0.75rem; color:var(--text-muted);">${att.time}</span>
                     </td>
                     <td><span class="badge ${statusBadge}">${att.status}</span></td>
-                    <td><span class="badge ${devBadge}">${att.deviceType}</span></td>
-                    <td>${att.browser}</td>
+                    <td>${sourceBadge}</td>
+                    <td>${deviceProfile}</td>
                     <td><code>${att.enteredPattern}</code></td>
                     <td><div class="ua-column" title="${att.userAgent}">${att.userAgent}</div></td>
                 `;
@@ -1553,6 +1637,7 @@
         // Processes filtering conditions dynamically on users database
         function applyUsersFilter() {
             const uidQuery = elements.filterUsersUid.value.trim().toLowerCase();
+            const sourceQuery = elements.filterUsersSource.value;
             const deviceQuery = elements.filterUsersDevice.value;
 
             const userKeys = Object.keys(state.users);
@@ -1562,29 +1647,37 @@
 
             userKeys.forEach(uid => {
                 const u = state.users[uid] || {};
+                const source = u.source || 'browser';
                 const deviceType = u.deviceType || 'browser';
-                const browser = u.browser || 'Chrome';
+                const browser = u.browser || 'Unknown';
                 const firstVisit = u.firstVisit || '-';
                 const lastSeen = u.lastSeen || '-';
 
                 const matchesUid = !uidQuery || uid.toLowerCase().includes(uidQuery);
+                const matchesSource = !sourceQuery || source === sourceQuery;
                 const matchesDevice = !deviceQuery || deviceType.toLowerCase() === deviceQuery;
 
-                if (matchesUid && matchesDevice) {
+                if (matchesUid && matchesSource && matchesDevice) {
                     const userHistory = calculatedAttempts.filter(att => att.uid === uid);
                     const totalAttempts = userHistory.length;
                     const successAttempts = userHistory.filter(att => att.status === 'success').length;
                     const failedAttempts = userHistory.filter(att => att.status === 'failed').length;
 
+                    // Append newly introduced Android App info attributes [1]
                     matchedUsers.push({
                         uid,
+                        source,
                         deviceType,
                         browser,
                         firstVisit,
                         lastSeen,
                         totalAttempts,
                         successAttempts,
-                        failedAttempts
+                        failedAttempts,
+                        brand: u.brand || '-',
+                        model: u.model || '-',
+                        androidVersion: u.androidVersion || '-',
+                        sdkInt: u.sdkInt || 0
                     });
                 }
             });
@@ -1598,18 +1691,32 @@
             tbody.innerHTML = '';
 
             if (list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="text-center">No active user parameters fit the description.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center">No active user parameters fit the description.</td></tr>`;
                 return;
             }
 
             list.forEach(usr => {
                 const tr = document.createElement('tr');
-                const devBadge = usr.deviceType.toLowerCase() === 'webview' ? 'badge-cyan' : 'badge-neutral';
+                
+                // Build dynamic cell contents based on user connection route
+                const isAndroidApp = usr.source === 'android_app';
+                const sourceBadge = isAndroidApp 
+                    ? `<span class="badge badge-android"><i class="fa-brands fa-android"></i> App</span>`
+                    : `<span class="badge badge-neutral"><i class="fa-solid fa-globe"></i> Web</span>`;
+
+                const deviceProfile = isAndroidApp 
+                    ? `<strong>${usr.brand} ${usr.model}</strong>`
+                    : `Standard Web Client <small style="display:block; color:var(--text-muted);">${usr.deviceType}</small>`;
+
+                const engineOrOS = isAndroidApp 
+                    ? `Android ${usr.androidVersion} <small style="display:block; color:var(--text-muted);">SDK ${usr.sdkInt}</small>`
+                    : `${usr.browser}`;
 
                 tr.innerHTML = `
                     <td><span class="ua-column" title="${usr.uid}">${usr.uid}</span></td>
-                    <td><span class="badge ${devBadge}">${usr.deviceType}</span></td>
-                    <td>${usr.browser}</td>
+                    <td>${sourceBadge}</td>
+                    <td>${deviceProfile}</td>
+                    <td>${engineOrOS}</td>
                     <td><span style="font-size:0.8rem">${usr.firstVisit}</span></td>
                     <td><span style="font-size:0.8rem">${usr.lastSeen}</span></td>
                     <td class="text-center"><strong>${usr.totalAttempts}</strong></td>
@@ -1656,7 +1763,7 @@
         }
 
         // -------------------------------------------------------------------------
-        // NEW FEATURE: HISTORY MANAGER (RECORDS DESTRUCTION AND INLINE EDITING)
+        // HISTORY MANAGER (RECORDS DESTRUCTION AND INLINE EDITING)
         // -------------------------------------------------------------------------
         function setupHistoryManagerEvents() {
             // Select All checkbox trigger
@@ -1758,6 +1865,11 @@
                 
                 const tr = document.createElement('tr');
                 const badgeClass = att.status === 'success' ? 'badge-success' : 'badge-danger';
+
+                // Display dynamic device hardware properties if available [1]
+                const deviceDetails = att.source === 'android_app'
+                    ? `<span style="color: var(--accent-android);"><i class="fa-brands fa-android"></i> ${att.brand} ${att.model}</span>`
+                    : `<span style="color: var(--text-muted);">${att.browser} (${att.deviceType})</span>`;
                 
                 tr.innerHTML = `
                     <td class="text-center">
@@ -1767,7 +1879,7 @@
                     <td><span class="ua-column" title="${att.uid}">${att.uid}</span></td>
                     <td>${att.date} <small style="display:block; color:var(--text-muted);">${att.time}</small></td>
                     <td><span class="badge ${badgeClass}">${att.status}</span></td>
-                    <td><span class="badge badge-neutral">${att.deviceType}</span></td>
+                    <td>${deviceDetails}</td>
                     <td>
                         <input type="text" class="editable-field" value="${att.enteredPattern}" 
                             data-uid="${att.uid}" data-attemptid="${att.attemptId}" data-path="${pathReference}">
