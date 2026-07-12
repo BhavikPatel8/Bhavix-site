@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#10141d">
 <meta name="color-scheme" content="dark">
-<title>Daily Prayer</title>
+<title>Prayer Note</title>
 
 <style>
     :root {
@@ -267,7 +267,7 @@
         transform: scale(0.97);
     }
 
-    /* Floating zoom widget: hidden panel + small trigger button */
+    /* Floating zoom widget: hidden panel */
     #zoom-widget {
         position: fixed;
         right: max(14px, env(safe-area-inset-right));
@@ -356,46 +356,6 @@
         text-align: center;
     }
 
-    #zoom-fab {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        width: 46px;
-        height: 46px;
-
-        border: 0;
-        border-radius: 50%;
-
-        background: rgba(24, 30, 41, 0.92);
-        color: #ffffff;
-
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.34);
-
-        cursor: pointer;
-        touch-action: manipulation;
-        transition: transform 150ms ease, background 150ms ease;
-    }
-
-    #zoom-fab:active {
-        transform: scale(0.92);
-        background: rgba(255, 255, 255, 0.14);
-    }
-
-    #zoom-fab svg {
-        width: 21px;
-        height: 21px;
-        fill: none;
-        stroke: currentColor;
-        stroke-width: 2;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-    }
-
     noscript {
         display: block;
         padding: 30px 20px;
@@ -438,7 +398,7 @@
 <!-- Rendered PDF pages -->
 <main id="pdf-container" aria-label="Daily Prayer document"></main>
 
-<!-- Floating zoom control: hidden by default, revealed via the small trigger button -->
+<!-- Floating zoom control: hidden by default -->
 <div id="zoom-widget">
     <div id="zoom-panel" role="group" aria-label="Document zoom controls">
         <button type="button" class="zoom-button" id="zoom-out" aria-label="Zoom out">−</button>
@@ -446,15 +406,6 @@
         <button type="button" class="zoom-button" id="zoom-in" aria-label="Zoom in">+</button>
         <button type="button" class="zoom-button" id="zoom-reset" aria-label="Reset zoom">Reset</button>
     </div>
-
-    <button type="button" id="zoom-fab" aria-label="Zoom" aria-expanded="false">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="10.5" cy="10.5" r="6.5"></circle>
-            <line x1="15.3" y1="15.3" x2="21" y2="21"></line>
-            <line x1="7.5" y1="10.5" x2="13.5" y2="10.5"></line>
-            <line x1="10.5" y1="7.5" x2="10.5" y2="13.5"></line>
-        </svg>
-    </button>
 </div>
 
 <!-- Error screen -->
@@ -530,7 +481,6 @@ const errorMessage = document.getElementById("error-message");
 
 const zoomWidget = document.getElementById("zoom-widget");
 const zoomPanel = document.getElementById("zoom-panel");
-const zoomFab = document.getElementById("zoom-fab");
 const zoomOutButton = document.getElementById("zoom-out");
 const zoomInButton = document.getElementById("zoom-in");
 const zoomResetButton = document.getElementById("zoom-reset");
@@ -545,7 +495,7 @@ let pageObserver = null;
 let pageElements = [];
 
 let basePageWidth = 0;
-let committedZoom = 1; // the only zoom concept: a pure CSS width multiplier
+let committedZoom = 1; // the only concept of zoom: a pure CSS width multiplier
 let firstPageShown = false;
 
 const renderedPages = new Set();  // pages that have been rendered — permanently, once
@@ -615,18 +565,16 @@ function getTouchCenter(touchA, touchB) {
 }
 
 /* ---------------------------------------------------------------------
- * Zoom panel visibility (hidden by default; shown via the small FAB)
+ * Zoom panel visibility
  * ------------------------------------------------------------------- */
 
 function openZoomPanel() {
     zoomPanel.classList.add("visible");
-    zoomFab.setAttribute("aria-expanded", "true");
     restartPanelHideTimer();
 }
 
 function closeZoomPanel() {
     zoomPanel.classList.remove("visible");
-    zoomFab.setAttribute("aria-expanded", "false");
     window.clearTimeout(panelHideTimer);
 }
 
@@ -635,21 +583,13 @@ function restartPanelHideTimer() {
     panelHideTimer = window.setTimeout(closeZoomPanel, PANEL_AUTO_HIDE_DELAY);
 }
 
-zoomFab.addEventListener("click", () => {
-    if (zoomPanel.classList.contains("visible")) {
-        closeZoomPanel();
-    } else {
-        openZoomPanel();
-    }
-});
-
 document.addEventListener(
     "click",
     event => {
         if (!zoomPanel.classList.contains("visible")) {
             return;
         }
-        if (zoomPanel.contains(event.target) || zoomFab.contains(event.target)) {
+        if (zoomPanel.contains(event.target)) {
             return;
         }
         closeZoomPanel();
@@ -920,14 +860,14 @@ function setupZoomControls() {
             }
 
             const [touchA, touchB] = event.touches;
-            const rect = container.getBoundingClientRect();
+            const textRect = container.getBoundingClientRect();
             const center = getTouchCenter(touchA, touchB);
 
             gesture = {
                 startDistance: getTouchDistance(touchA, touchB),
                 startZoom: committedZoom,
-                originX: center.x - rect.left,
-                originY: center.y - rect.top,
+                originX: center.x - textRect.left,
+                originY: center.y - textRect.top,
                 lastZoom: committedZoom,
                 lastClientX: center.x,
                 lastClientY: center.y
@@ -1120,7 +1060,6 @@ async function startViewer() {
 
 void startViewer();
 </script>
-
 
 </body>
 </html>
