@@ -1,62 +1,773 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
 
-<title>Daily Prayer</title>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    >
 
-<style>
-html,body{
-    margin:0;
-    padding:0;
-    width:100%;
-    height:100%;
-    background:#fff;
-    overflow:auto;
-}
+    <meta name="theme-color" content="#10141d">
+    <meta name="color-scheme" content="dark">
 
-canvas{
-    display:block;
-    width:100%;
-    height:auto;
-    margin:0 auto;
-}
-</style>
+    <title>Daily Prayer</title>
+
+    <style>
+        :root {
+            --app-background: #10141d;
+            --page-gap: 12px;
+            --page-max-width: 900px;
+            --side-space: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            width: 100%;
+            min-height: 100%;
+            background: var(--app-background);
+            scroll-behavior: smooth;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            width: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow-x: hidden;
+            overflow-y: auto;
+            background: var(--app-background);
+            color: #ffffff;
+            font-family:
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            overscroll-behavior-y: contain;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Main PDF area */
+        #pdf-container {
+            width: 100%;
+            max-width: calc(var(--page-max-width) + 16px);
+            min-height: 100vh;
+            margin: 0 auto;
+            padding:
+                max(8px, env(safe-area-inset-top))
+                var(--side-space)
+                max(16px, env(safe-area-inset-bottom));
+        }
+
+        /* Each PDF page */
+        .pdf-page {
+            position: relative;
+            width: 100%;
+            max-width: var(--page-max-width);
+            margin: 0 auto var(--page-gap);
+            overflow: hidden;
+            background: #fffaf0;
+            box-shadow:
+                0 3px 12px rgba(0, 0, 0, 0.28),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+
+            contain: layout paint;
+        }
+
+        .pdf-page:last-child {
+            margin-bottom: 0;
+        }
+
+        .pdf-page canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #fffaf0;
+            opacity: 0;
+            transition: opacity 180ms ease;
+        }
+
+        .pdf-page.rendered canvas {
+            opacity: 1;
+        }
+
+        /* Temporary skeleton shown before page rendering */
+        .page-placeholder {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            overflow: hidden;
+            background: #fffaf0;
+            transition: opacity 180ms ease;
+        }
+
+        .page-placeholder::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            transform: translateX(-100%);
+            background:
+                linear-gradient(
+                    90deg,
+                    transparent,
+                    rgba(255, 255, 255, 0.5),
+                    transparent
+                );
+            animation: page-shimmer 1.3s infinite;
+        }
+
+        .pdf-page.rendered .page-placeholder {
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        @keyframes page-shimmer {
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        /* Initial loading screen */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            padding: 24px;
+            background: var(--app-background);
+            transition:
+                opacity 220ms ease,
+                visibility 220ms ease;
+        }
+
+        #loading-screen.hidden {
+            visibility: hidden;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        .loader-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 42px;
+            height: 42px;
+            border: 4px solid rgba(255, 255, 255, 0.16);
+            border-top-color: #19b7a5;
+            border-radius: 50%;
+            animation: spin 800ms linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #loading-text {
+            color: rgba(255, 255, 255, 0.82);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Error screen—only visible if something fails */
+        #error-screen {
+            display: none;
+            min-height: 100vh;
+            min-height: 100dvh;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: var(--app-background);
+        }
+
+        #error-screen.visible {
+            display: flex;
+        }
+
+        .error-card {
+            width: min(100%, 420px);
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+            text-align: center;
+        }
+
+        .error-icon {
+            margin-bottom: 12px;
+            font-size: 34px;
+        }
+
+        .error-title {
+            margin-bottom: 8px;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .error-message {
+            color: rgba(255, 255, 255, 0.72);
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-wrap: anywhere;
+        }
+
+        .retry-button {
+            margin-top: 18px;
+            padding: 11px 20px;
+            border: 0;
+            border-radius: 999px;
+
+            background: #19b7a5;
+            color: #07120f;
+
+            font: inherit;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .retry-button:active {
+            transform: scale(0.97);
+        }
+
+        noscript {
+            display: block;
+            padding: 30px 20px;
+            color: white;
+            text-align: center;
+        }
+
+        /* Avoid animations when user requests reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                scroll-behavior: auto !important;
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Larger screens */
+        @media (min-width: 768px) {
+            :root {
+                --page-gap: 16px;
+                --side-space: 14px;
+            }
+
+            #pdf-container {
+                padding-top: 14px;
+                padding-bottom: 24px;
+            }
+        }
+    </style>
 </head>
+
 <body>
 
-<div id="pdf-container"></div>
+    <!-- Initial loader -->
+    <div id="loading-screen" role="status" aria-live="polite">
+        <div class="loader-content">
+            <div class="spinner" aria-hidden="true"></div>
+            <div id="loading-text">Prayer note load ho rahi hai...</div>
+        </div>
+    </div>
 
-<script type="module">
-import * as pdfjsLib from './pdfjs/pdf.mjs';
+    <!-- PDF pages are inserted here -->
+    <main id="pdf-container" aria-label="Daily Prayer document"></main>
 
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-'./pdfjs/pdf.worker.mjs';
+    <!-- Only shown when loading fails -->
+    <section id="error-screen" role="alert">
+        <div class="error-card">
+            <div class="error-icon" aria-hidden="true">⚠️</div>
+            <div class="error-title">Prayer note load nahi hui</div>
+            <div class="error-message" id="error-message">
+                Required files check karo.
+            </div>
 
-const pdf = await pdfjsLib.getDocument('dailypraynew.pdf').promise;
-const container = document.getElementById('pdf-container');
+            <button
+                type="button"
+                class="retry-button"
+                onclick="window.location.reload()"
+            >
+                Try Again
+            </button>
+        </div>
+    </section>
 
-for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    <noscript>
+        Is prayer note ko dekhne ke liye JavaScript enable hona zaroori hai.
+    </noscript>
 
-    const page = await pdf.getPage(pageNum);
+    <script type="module">
+        "use strict";
 
-    const viewport = page.getViewport({ scale: 1.5 });
+        /*
+         * ==========================================================
+         * FILE PATHS
+         * ==========================================================
+         *
+         * Final GitHub structure:
+         *
+         * public/
+         * └── documents/
+         *     ├── index.html
+         *     ├── prayer-note.pdf
+         *     └── pdfjs/
+         *         ├── pdf.mjs
+         *         └── pdf.worker.mjs
+         */
 
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
+        const BASE_PATH = "/documents/";
 
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+        const PDF_URL =
+            `${BASE_PATH}prayer-note.pdf?v=1`;
 
-    container.appendChild(canvas);
+        const PDFJS_MODULE_URL =
+            `${BASE_PATH}pdfjs/pdf.mjs`;
 
-    await page.render({
-        canvasContext: context,
-        viewport: viewport
-    }).promise;
-}
-</script>
+        const PDFJS_WORKER_URL =
+            `${BASE_PATH}pdfjs/pdf.worker.mjs`;
+
+        /*
+         * DevicePixelRatio ko limit karne se mobile WebView me
+         * memory usage kam rahega, lekin PDF sharp bhi dikhegi.
+         */
+        const MAX_PIXEL_RATIO = 2;
+
+        /*
+         * Current viewport ke paas wale pages pehle render honge.
+         * Isse mobile RAM aur initial loading time improve hota hai.
+         */
+        const OBSERVER_MARGIN = "180% 0px";
+
+        const container =
+            document.getElementById("pdf-container");
+
+        const loadingScreen =
+            document.getElementById("loading-screen");
+
+        const loadingText =
+            document.getElementById("loading-text");
+
+        const errorScreen =
+            document.getElementById("error-screen");
+
+        const errorMessage =
+            document.getElementById("error-message");
+
+        let pdfDocument = null;
+        let pageObserver = null;
+
+        const renderedPages = new Set();
+        const renderingPages = new Set();
+
+        function updateLoadingText(message) {
+            loadingText.textContent = message;
+        }
+
+        function hideLoadingScreen() {
+            loadingScreen.classList.add("hidden");
+        }
+
+        function showError(error) {
+            console.error("PDF Viewer Error:", error);
+
+            hideLoadingScreen();
+            container.hidden = true;
+            errorScreen.classList.add("visible");
+
+            let message =
+                "PDF ya PDF.js files load nahi ho rahi hain.";
+
+            if (error instanceof Error && error.message) {
+                message += ` Error: ${error.message}`;
+            }
+
+            errorMessage.textContent = message;
+        }
+
+        function getAvailablePageWidth() {
+            const containerStyle =
+                window.getComputedStyle(container);
+
+            const leftPadding =
+                parseFloat(containerStyle.paddingLeft) || 0;
+
+            const rightPadding =
+                parseFloat(containerStyle.paddingRight) || 0;
+
+            return Math.max(
+                280,
+                Math.min(
+                    900,
+                    container.clientWidth -
+                    leftPadding -
+                    rightPadding
+                )
+            );
+        }
+
+        async function createPagePlaceholders() {
+            const fragment =
+                document.createDocumentFragment();
+
+            for (
+                let pageNumber = 1;
+                pageNumber <= pdfDocument.numPages;
+                pageNumber++
+            ) {
+                const page =
+                    await pdfDocument.getPage(pageNumber);
+
+                const baseViewport =
+                    page.getViewport({ scale: 1 });
+
+                const pageElement =
+                    document.createElement("section");
+
+                pageElement.className = "pdf-page";
+                pageElement.dataset.pageNumber =
+                    String(pageNumber);
+
+                /*
+                 * Browser ko render hone se pehle page ka exact
+                 * aspect ratio pata rahega. Isse layout jump nahi karega.
+                 */
+                pageElement.style.aspectRatio =
+                    `${baseViewport.width} / ${baseViewport.height}`;
+
+                const placeholder =
+                    document.createElement("div");
+
+                placeholder.className = "page-placeholder";
+                placeholder.setAttribute("aria-hidden", "true");
+
+                const canvas =
+                    document.createElement("canvas");
+
+                canvas.setAttribute(
+                    "aria-label",
+                    `Document page ${pageNumber}`
+                );
+
+                pageElement.append(
+                    placeholder,
+                    canvas
+                );
+
+                fragment.appendChild(pageElement);
+
+                /*
+                 * Viewport milne ke baad page object memory release.
+                 * Actual rendering ke waqt page dobara access hoga.
+                 */
+                page.cleanup();
+            }
+
+            container.replaceChildren(fragment);
+        }
+
+        async function renderPage(pageElement) {
+            const pageNumber =
+                Number(pageElement.dataset.pageNumber);
+
+            if (
+                renderedPages.has(pageNumber) ||
+                renderingPages.has(pageNumber)
+            ) {
+                return;
+            }
+
+            renderingPages.add(pageNumber);
+
+            try {
+                const page =
+                    await pdfDocument.getPage(pageNumber);
+
+                const canvas =
+                    pageElement.querySelector("canvas");
+
+                const context =
+                    canvas.getContext("2d", {
+                        alpha: false,
+                        desynchronized: true
+                    });
+
+                if (!context) {
+                    throw new Error(
+                        `Canvas context unavailable on page ${pageNumber}.`
+                    );
+                }
+
+                const baseViewport =
+                    page.getViewport({ scale: 1 });
+
+                const cssWidth =
+                    Math.max(
+                        1,
+                        pageElement.clientWidth ||
+                        getAvailablePageWidth()
+                    );
+
+                const cssScale =
+                    cssWidth / baseViewport.width;
+
+                const pixelRatio =
+                    Math.min(
+                        window.devicePixelRatio || 1,
+                        MAX_PIXEL_RATIO
+                    );
+
+                const renderScale =
+                    cssScale * pixelRatio;
+
+                const renderViewport =
+                    page.getViewport({
+                        scale: renderScale
+                    });
+
+                const cssHeight =
+                    baseViewport.height * cssScale;
+
+                canvas.width =
+                    Math.max(
+                        1,
+                        Math.floor(renderViewport.width)
+                    );
+
+                canvas.height =
+                    Math.max(
+                        1,
+                        Math.floor(renderViewport.height)
+                    );
+
+                canvas.style.width =
+                    `${Math.round(cssWidth)}px`;
+
+                canvas.style.height =
+                    `${Math.round(cssHeight)}px`;
+
+                await page.render({
+                    canvasContext: context,
+                    viewport: renderViewport,
+                    background: "rgb(255, 250, 240)"
+                }).promise;
+
+                renderedPages.add(pageNumber);
+                pageElement.classList.add("rendered");
+
+                page.cleanup();
+
+                /*
+                 * First page ready hote hi loading screen remove.
+                 * Baaki pages background me zarurat ke waqt render honge.
+                 */
+                if (pageNumber === 1) {
+                    hideLoadingScreen();
+                }
+            } catch (error) {
+                console.error(
+                    `Page ${pageNumber} render failed:`,
+                    error
+                );
+
+                pageElement.innerHTML = `
+                    <div
+                        style="
+                            display:flex;
+                            align-items:center;
+                            justify-content:center;
+                            width:100%;
+                            height:100%;
+                            padding:20px;
+                            background:#fffaf0;
+                            color:#5b2424;
+                            font:600 14px system-ui,sans-serif;
+                            text-align:center;
+                        "
+                    >
+                        Page ${pageNumber} load nahi hui.
+                    </div>
+                `;
+            } finally {
+                renderingPages.delete(pageNumber);
+            }
+        }
+
+        function setupLazyRendering() {
+            const pageElements =
+                [...document.querySelectorAll(".pdf-page")];
+
+            /*
+             * Old Android WebView fallback:
+             * IntersectionObserver unavailable ho toh sab pages
+             * sequentially render karenge.
+             */
+            if (!("IntersectionObserver" in window)) {
+                void renderPagesSequentially(pageElements);
+                return;
+            }
+
+            pageObserver = new IntersectionObserver(
+                entries => {
+                    for (const entry of entries) {
+                        if (!entry.isIntersecting) {
+                            continue;
+                        }
+
+                        const pageElement = entry.target;
+
+                        void renderPage(pageElement);
+
+                        pageObserver.unobserve(pageElement);
+                    }
+                },
+                {
+                    root: null,
+                    rootMargin: OBSERVER_MARGIN,
+                    threshold: 0.01
+                }
+            );
+
+            for (const pageElement of pageElements) {
+                pageObserver.observe(pageElement);
+            }
+        }
+
+        async function renderPagesSequentially(pageElements) {
+            for (const pageElement of pageElements) {
+                await renderPage(pageElement);
+            }
+        }
+
+        async function startViewer() {
+            try {
+                updateLoadingText(
+                    "PDF engine load ho raha hai..."
+                );
+
+                /*
+                 * Dynamic import use kiya hai taaki PDF.js missing ho
+                 * toh blank page ke bajay proper error show ho.
+                 */
+                const pdfjsLib =
+                    await import(PDFJS_MODULE_URL);
+
+                pdfjsLib.GlobalWorkerOptions.workerSrc =
+                    PDFJS_WORKER_URL;
+
+                updateLoadingText(
+                    "Prayer note download ho rahi hai..."
+                );
+
+                const loadingTask =
+                    pdfjsLib.getDocument({
+                        url: PDF_URL,
+
+                        /*
+                         * Fonts aur system resources ko PDF ke andar
+                         * available data se render karne me help karta hai.
+                         */
+                        useSystemFonts: true,
+
+                        /*
+                         * Normal HTTP/HTTPS hosting ke liye safe defaults.
+                         */
+                        disableRange: false,
+                        disableStream: false,
+                        disableAutoFetch: false
+                    });
+
+                loadingTask.onProgress = progress => {
+                    if (
+                        !progress.total ||
+                        progress.total <= 0
+                    ) {
+                        return;
+                    }
+
+                    const percent =
+                        Math.min(
+                            100,
+                            Math.round(
+                                (progress.loaded / progress.total) * 100
+                            )
+                        );
+
+                    updateLoadingText(
+                        `Prayer note load ho rahi hai... ${percent}%`
+                    );
+                };
+
+                pdfDocument =
+                    await loadingTask.promise;
+
+                updateLoadingText(
+                    `${pdfDocument.numPages} pages tayyar ho rahe hain...`
+                );
+
+                await createPagePlaceholders();
+
+                /*
+                 * First page immediately render karo.
+                 */
+                const firstPage =
+                    document.querySelector(
+                        '.pdf-page[data-page-number="1"]'
+                    );
+
+                if (!firstPage) {
+                    throw new Error(
+                        "First PDF page could not be created."
+                    );
+                }
+
+                await renderPage(firstPage);
+
+                /*
+                 * Remaining pages lazy render honge.
+                 */
+                setupLazyRendering();
+            } catch (error) {
+                showError(error);
+            }
+        }
+
+        /*
+         * Browser back-forward cache se restore hone par canvas
+         * content normally preserved rahega.
+         */
+        window.addEventListener("pageshow", event => {
+            if (
+                event.persisted &&
+                renderedPages.size === 0
+            ) {
+                window.location.reload();
+            }
+        });
+
+        void startViewer();
+    </script>
 
 </body>
 </html>
