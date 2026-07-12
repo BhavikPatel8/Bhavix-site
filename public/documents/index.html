@@ -493,23 +493,28 @@ const PDFJS_WORKER_URL = "/documents/pdfjs/pdf.worker.mjs";
  * Tunables
  * ------------------------------------------------------------------- */
 
-// Rendering quality / memory safety.
-const MAX_PIXEL_RATIO = 2.5;        // cap on devicePixelRatio contribution
-const QUALITY_MULTIPLIER = 1.15;    // slight oversampling for crisper text
-const MAX_CANVAS_PIXELS = 4_000_000; // absolute safety cap (~4 MP) per canvas,
-                                      // protects Android WebView from OOM at high zoom
+// Each page is rendered exactly once, up front, at a resolution high
+// enough to stay sharp all the way up to MAX_ZOOM without ever
+// re-rendering. Zoom afterwards is pure CSS/layout scaling.
+const MAX_DEVICE_PIXEL_RATIO = 2;   // cap on devicePixelRatio contribution
+const QUALITY_MULTIPLIER = 1.1;     // slight oversampling for crisper text
+const MAX_CANVAS_PIXELS = 4_500_000; // absolute safety cap (~4.5 MP) per canvas,
+                                      // protects Android WebView from OOM
 
-// Zoom behaviour.
+// Zoom behaviour (CSS/layout scaling only — never touches PDF.js again).
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 2.5;
 const ZOOM_STEP = 0.25;
 const WHEEL_ZOOM_STEP = 0.12;
 
+// Pages are pre-rendered assuming zoom may reach this level, so the
+// existing bitmap stays crisp when later stretched via CSS.
+const RENDER_QUALITY_ZOOM = MAX_ZOOM;
+
 // Lazy loading.
 const OBSERVER_MARGIN = "150% 0px";
 
-// Debounce windows.
-const SHARP_RERENDER_DELAY = 320; // ms — inside the pinch-end 250-400ms window
+// Debounce for layout-only work (no rendering involved).
 const RESIZE_DEBOUNCE_DELAY = 200; // ms
 const PANEL_AUTO_HIDE_DELAY = 4000; // ms
 
@@ -540,14 +545,12 @@ let pageObserver = null;
 let pageElements = [];
 
 let basePageWidth = 0;
-let committedZoom = 1;          // the "baked" zoom level actually reflected in layout
+let committedZoom = 1; // the only zoom concept: a pure CSS width multiplier
 let firstPageShown = false;
 
-const renderedPages = new Set();     // pages that have a bitmap on screen
-const renderingPages = new Map();    // pageNumber -> zoom key currently being rendered
-const renderTasks = new Map();       // pageNumber -> in-flight pdf.js RenderTask
+const renderedPages = new Set();  // pages that have been rendered — permanently, once
+const renderingPages = new Set(); // pages currently in their one-time render
 
-let sharpRerenderTimer = null;
 let resizeTimer = null;
 let panelHideTimer = null;
 
@@ -655,7 +658,13 @@ document.addEventListener(
 );
 
 /* ---------------------------------------------------------------------
- * Layout: applying the committed (baked) zoom level to page widths
+ * Zoom: pure CSS/layout scaling of already-rendered pages.
+ *
+ * PDF.js is never touched again after the one-time initial render.
+ * Each page's <canvas> keeps width:100%; height:100% (see stylesheet),
+ * so it automatically stretches to whatever size its .pdf-page
+ * container currently has — zooming is just changing that container
+ * width, nothing else.
  * ------------------------------------------------------------------- */
 
 function updateZoomDisplay(liveZoomOverride) {
@@ -679,9 +688,9 @@ function applyPageWidths() {
 }
 
 /**
- * Bakes a new zoom level into the real layout (page widths), preserving the
- * on-screen position of a given anchor point, then schedules a debounced
- * high-quality re-render of the pages currently near the viewport.
+ * Bakes a new zoom level into the real page widths, preserving the
+ * on-screen position of a given anchor point. Purely layout math —
+ * no canvas is touched, no PDF.js call is made.
  */
 function applyZoom(targetZoom, anchorClientPoint) {
     const clamped = clampZoom(targetZoom);
@@ -715,62 +724,47 @@ function applyZoom(targetZoom, anchorClientPoint) {
 
         window.scrollTo({ top: newScrollY, left: newScrollX, behavior: "auto" });
     });
-
-    scheduleSharpRerender();
 }
 
 /* ---------------------------------------------------------------------
- * Rendering — a single unified path used for both first-time render and
- * post-zoom sharp re-render, with an offscreen buffer so the visible
- * canvas is only ever replaced by a *finished* bitmap, never cleared
- * ahead of time. This is what prevents blank / flashing pages.
+ * Rendering — each page is rendered exactly once, ever. There is no
+ * offscreen buffer, no swap, and nothing here is ever invoked again
+ * because of a zoom change, a resize, or an orientation change.
  * ------------------------------------------------------------------- */
 
 async function renderPage(pageElement) {
     const pageNumber = Number(pageElement.dataset.pageNumber);
-    const targetZoomKey = committedZoom.toFixed(3);
 
-    // Already showing the correct bitmap for this zoom level? Nothing to do.
-    if (renderedPages.has(pageNumber) && pageElement.dataset.renderedZoom === targetZoomKey) {
+    if (renderedPages.has(pageNumber) || renderingPages.has(pageNumber)) {
         return;
     }
 
-    // Already rendering exactly this zoom level? Let it finish.
-    if (renderingPages.get(pageNumber) === targetZoomKey) {
-        return;
-    }
-
-    // A render for a *different*, now-stale zoom level is in flight — cancel it.
-    const staleTask = renderTasks.get(pageNumber);
-    if (staleTask) {
-        try {
-            staleTask.cancel();
-        } catch (_error) {
-            // Ignore — cancellation is best-effort.
-        }
-        renderTasks.delete(pageNumber);
-    }
-
-    renderingPages.set(pageNumber, targetZoomKey);
-
-    const isFreshPage = !pageElement.classList.contains("rendered");
+    renderingPages.add(pageNumber);
 
     try {
         const page = await pdfDocument.getPage(pageNumber);
 
+        const canvas = pageElement.querySelector("canvas");
+        const context = canvas.getContext("2d", { alpha: false, desynchronized: true });
+
+        if (!context) {
+            throw new Error(`Canvas context unavailable on page ${pageNumber}.`);
+        }
+
         const baseViewport = page.getViewport({ scale: 1 });
-        const cssWidth = Math.max(1, pageElement.clientWidth);
-        const cssScale = cssWidth / baseViewport.width;
-        const cssHeight = baseViewport.height * cssScale;
 
-        const deviceRatio = window.devicePixelRatio || 1;
-        const pixelRatio = Math.min(deviceRatio * QUALITY_MULTIPLIER, MAX_PIXEL_RATIO);
+        // Resolution is computed against the fit-to-width baseline and the
+        // maximum zoom level up front — this is the only render that will
+        // ever happen for this page, so it has to stay sharp all the way
+        // up to MAX_ZOOM using nothing but CSS stretching afterwards.
+        const cssScale = basePageWidth / baseViewport.width;
+        const deviceRatio = Math.min(window.devicePixelRatio || 1, MAX_DEVICE_PIXEL_RATIO);
 
-        let renderScale = cssScale * pixelRatio;
+        let renderScale = cssScale * RENDER_QUALITY_ZOOM * deviceRatio * QUALITY_MULTIPLIER;
         let renderViewport = page.getViewport({ scale: renderScale });
 
-        // Hard safety cap: never let a single canvas exceed a safe pixel budget,
-        // regardless of zoom level or device pixel ratio.
+        // Hard safety cap: never let a single canvas exceed a safe pixel
+        // budget, regardless of zoom headroom or device pixel ratio.
         const projectedPixels = renderViewport.width * renderViewport.height;
         if (projectedPixels > MAX_CANVAS_PIXELS) {
             const shrink = Math.sqrt(MAX_CANVAS_PIXELS / projectedPixels);
@@ -778,109 +772,43 @@ async function renderPage(pageElement) {
             renderViewport = page.getViewport({ scale: renderScale });
         }
 
-        // Render into a detached, off-screen canvas first. The canvas that is
-        // actually on screen is never touched until this finishes successfully.
-        const bufferCanvas = document.createElement("canvas");
-        bufferCanvas.width = Math.max(1, Math.floor(renderViewport.width));
-        bufferCanvas.height = Math.max(1, Math.floor(renderViewport.height));
+        canvas.width = Math.max(1, Math.floor(renderViewport.width));
+        canvas.height = Math.max(1, Math.floor(renderViewport.height));
+        // No inline canvas.style.width/height is set here on purpose —
+        // the stylesheet's width:100%; height:100% makes the canvas
+        // always fill its .pdf-page container, at whatever zoom that
+        // container currently is. That is the entire zoom mechanism.
 
-        const bufferContext = bufferCanvas.getContext("2d", { alpha: false });
-        if (!bufferContext) {
-            throw new Error(`Canvas context unavailable on page ${pageNumber}.`);
-        }
-
-        const renderTask = page.render({
-            canvasContext: bufferContext,
+        await page.render({
+            canvasContext: context,
             viewport: renderViewport,
             background: "rgb(255, 250, 240)"
-        });
+        }).promise;
 
-        renderTasks.set(pageNumber, renderTask);
-        await renderTask.promise;
-        renderTasks.delete(pageNumber);
-
-        // Commit: swap the finished bitmap onto the visible canvas in one
-        // synchronous block, so the browser never paints an in-between blank frame.
-        const visibleCanvas = pageElement.querySelector("canvas");
-        const visibleContext = visibleCanvas.getContext("2d", { alpha: false, desynchronized: true });
-
-        visibleCanvas.width = bufferCanvas.width;
-        visibleCanvas.height = bufferCanvas.height;
-        visibleCanvas.style.width = `${Math.round(cssWidth)}px`;
-        visibleCanvas.style.height = `${Math.round(cssHeight)}px`;
-        visibleContext.drawImage(bufferCanvas, 0, 0);
-
-        pageElement.dataset.renderedZoom = targetZoomKey;
         renderedPages.add(pageNumber);
+        pageElement.classList.add("rendered");
 
-        if (isFreshPage) {
-            pageElement.classList.add("rendered");
-        }
+        page.cleanup();
 
         if (pageNumber === 1 && !firstPageShown) {
             firstPageShown = true;
             hideLoadingScreen();
         }
-
-        page.cleanup();
     } catch (error) {
-        if (error && error.name === "RenderingCancelledException") {
-            return; // Expected: a newer zoom level superseded this render.
-        }
-
         console.error(`Page ${pageNumber} rendering failed:`, error);
 
-        if (isFreshPage) {
-            pageElement.innerHTML = `
-                <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:20px;background:#fffaf0;color:#5b2424;font:600 14px system-ui,sans-serif;text-align:center;">
-                    Page ${pageNumber} could not be displayed.
-                </div>
-            `;
+        pageElement.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:20px;background:#fffaf0;color:#5b2424;font:600 14px system-ui,sans-serif;text-align:center;">
+                Page ${pageNumber} could not be displayed.
+            </div>
+        `;
 
-            if (pageNumber === 1 && !firstPageShown) {
-                firstPageShown = true;
-                hideLoadingScreen();
-            }
+        if (pageNumber === 1 && !firstPageShown) {
+            firstPageShown = true;
+            hideLoadingScreen();
         }
     } finally {
-        if (renderingPages.get(pageNumber) === targetZoomKey) {
-            renderingPages.delete(pageNumber);
-        }
-    }
-}
-
-function scheduleSharpRerender() {
-    window.clearTimeout(sharpRerenderTimer);
-    sharpRerenderTimer = window.setTimeout(() => {
-        void rerenderNearbyPages();
-    }, SHARP_RERENDER_DELAY);
-}
-
-async function rerenderNearbyPages() {
-    const targetKey = committedZoom.toFixed(3);
-
-    for (const pageElement of pageElements) {
-        const pageNumber = Number(pageElement.dataset.pageNumber);
-
-        // Not rendered yet: the IntersectionObserver will render it at the
-        // correct (current) zoom level once it actually enters view.
-        if (!renderedPages.has(pageNumber)) {
-            continue;
-        }
-
-        // Already sharp at the current zoom level.
-        if (pageElement.dataset.renderedZoom === targetKey) {
-            continue;
-        }
-
-        const rect = pageElement.getBoundingClientRect();
-        const isNearViewport = rect.bottom >= -window.innerHeight && rect.top <= window.innerHeight * 2;
-
-        if (!isNearViewport) {
-            continue;
-        }
-
-        await renderPage(pageElement);
+        renderingPages.delete(pageNumber);
     }
 }
 
@@ -955,7 +883,10 @@ async function createPagePlaceholders() {
 }
 
 /* ---------------------------------------------------------------------
- * Zoom controls: buttons, pinch gesture, desktop Ctrl+wheel
+ * Zoom controls: buttons, pinch gesture, desktop Ctrl+wheel.
+ *
+ * All of these only ever call applyZoom()/applyPageWidths() — pure
+ * CSS/layout scaling. None of them call renderPage() or touch PDF.js.
  * ------------------------------------------------------------------- */
 
 function setupZoomControls() {
@@ -976,9 +907,10 @@ function setupZoomControls() {
 
     // --- Pinch-to-zoom -------------------------------------------------
     //
-    // During the gesture we only apply a CSS transform (compositor-only,
-    // no layout/reflow, no canvas re-render). The real page widths and a
-    // sharp re-render only happen once, after the gesture ends.
+    // While fingers are moving, only a CSS transform preview is applied
+    // (compositor-only, no layout, no rendering). Once the gesture ends,
+    // the transform is removed and the real page width is set once —
+    // still pure CSS, still no rendering.
 
     container.addEventListener(
         "touchstart",
@@ -1110,7 +1042,7 @@ function setupZoomControls() {
 }
 
 /* ---------------------------------------------------------------------
- * Resize / orientation change
+ * Resize / orientation change — layout only, never re-renders a page.
  * ------------------------------------------------------------------- */
 
 function handleViewportChange() {
@@ -1122,7 +1054,8 @@ function handleViewportChange() {
     resizeTimer = window.setTimeout(() => {
         basePageWidth = getAvailablePageWidth();
         applyPageWidths();
-        scheduleSharpRerender();
+        // Intentionally no re-render here: already-rendered canvases keep
+        // their existing bitmap and are simply re-stretched by CSS.
     }, RESIZE_DEBOUNCE_DELAY);
 }
 
@@ -1187,6 +1120,7 @@ async function startViewer() {
 
 void startViewer();
 </script>
+
 
 </body>
 </html>
