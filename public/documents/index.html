@@ -5,7 +5,14 @@
 
     <meta
         name="viewport"
-        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+        content="
+            width=device-width,
+            initial-scale=1.0,
+            maximum-scale=5.0,
+            minimum-scale=1.0,
+            user-scalable=yes,
+            viewport-fit=cover
+        "
     >
 
     <meta name="theme-color" content="#10141d">
@@ -16,6 +23,7 @@
     <style>
         :root {
             --app-background: #10141d;
+            --page-background: #fffaf0;
             --page-gap: 12px;
             --page-max-width: 900px;
             --side-space: 8px;
@@ -25,13 +33,13 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            -webkit-tap-highlight-color: transparent;
         }
 
         html {
             width: 100%;
             min-height: 100%;
             background: var(--app-background);
-            scroll-behavior: smooth;
             -webkit-text-size-adjust: 100%;
         }
 
@@ -39,10 +47,13 @@
             width: 100%;
             min-height: 100vh;
             min-height: 100dvh;
-            overflow-x: hidden;
+
+            overflow-x: auto;
             overflow-y: auto;
+
             background: var(--app-background);
             color: #ffffff;
+
             font-family:
                 system-ui,
                 -apple-system,
@@ -51,34 +62,41 @@
                 sans-serif;
 
             overscroll-behavior-y: contain;
-            -webkit-tap-highlight-color: transparent;
         }
 
-        /* Main PDF area */
+        /* PDF document area */
         #pdf-container {
             width: 100%;
-            max-width: calc(var(--page-max-width) + 16px);
+            min-width: 100%;
             min-height: 100vh;
+
             margin: 0 auto;
+
             padding:
                 max(8px, env(safe-area-inset-top))
                 var(--side-space)
-                max(16px, env(safe-area-inset-bottom));
+                max(90px, env(safe-area-inset-bottom));
         }
 
-        /* Each PDF page */
+        /* Individual PDF page */
         .pdf-page {
             position: relative;
+
             width: 100%;
             max-width: var(--page-max-width);
+
             margin: 0 auto var(--page-gap);
+
             overflow: hidden;
-            background: #fffaf0;
+
+            background: var(--page-background);
+
             box-shadow:
                 0 3px 12px rgba(0, 0, 0, 0.28),
                 0 0 0 1px rgba(255, 255, 255, 0.05);
 
             contain: layout paint;
+            transform-origin: top center;
         }
 
         .pdf-page:last-child {
@@ -87,9 +105,12 @@
 
         .pdf-page canvas {
             display: block;
+
             width: 100%;
             height: 100%;
-            background: #fffaf0;
+
+            background: var(--page-background);
+
             opacity: 0;
             transition: opacity 180ms ease;
         }
@@ -98,28 +119,34 @@
             opacity: 1;
         }
 
-        /* Temporary skeleton shown before page rendering */
+        /* Loading placeholder for every page */
         .page-placeholder {
             position: absolute;
             inset: 0;
             z-index: 1;
+
             overflow: hidden;
-            background: #fffaf0;
+
+            background: var(--page-background);
             transition: opacity 180ms ease;
         }
 
         .page-placeholder::after {
             content: "";
+
             position: absolute;
             inset: 0;
+
             transform: translateX(-100%);
+
             background:
                 linear-gradient(
                     90deg,
                     transparent,
-                    rgba(255, 255, 255, 0.5),
+                    rgba(255, 255, 255, 0.52),
                     transparent
                 );
+
             animation: page-shimmer 1.3s infinite;
         }
 
@@ -134,7 +161,7 @@
             }
         }
 
-        /* Initial loading screen */
+        /* Main loading screen */
         #loading-screen {
             position: fixed;
             inset: 0;
@@ -145,7 +172,9 @@
             justify-content: center;
 
             padding: 24px;
+
             background: var(--app-background);
+
             transition:
                 opacity 220ms ease,
                 visibility 220ms ease;
@@ -161,16 +190,20 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+
             gap: 16px;
+
             text-align: center;
         }
 
         .spinner {
             width: 42px;
             height: 42px;
+
             border: 4px solid rgba(255, 255, 255, 0.16);
             border-top-color: #19b7a5;
             border-radius: 50%;
+
             animation: spin 800ms linear infinite;
         }
 
@@ -182,18 +215,23 @@
 
         #loading-text {
             color: rgba(255, 255, 255, 0.82);
+
             font-size: 14px;
             line-height: 1.5;
         }
 
-        /* Error screen—only visible if something fails */
+        /* Error screen */
         #error-screen {
             display: none;
+
             min-height: 100vh;
             min-height: 100dvh;
+
             align-items: center;
             justify-content: center;
+
             padding: 24px;
+
             background: var(--app-background);
         }
 
@@ -203,11 +241,17 @@
 
         .error-card {
             width: min(100%, 420px);
+
             padding: 24px;
+
             border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 18px;
+
             background: rgba(255, 255, 255, 0.06);
-            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+
+            box-shadow:
+                0 18px 45px rgba(0, 0, 0, 0.28);
+
             text-align: center;
         }
 
@@ -218,20 +262,24 @@
 
         .error-title {
             margin-bottom: 8px;
+
             font-size: 18px;
             font-weight: 700;
         }
 
         .error-message {
             color: rgba(255, 255, 255, 0.72);
+
             font-size: 13px;
             line-height: 1.6;
+
             overflow-wrap: anywhere;
         }
 
         .retry-button {
             margin-top: 18px;
             padding: 11px 20px;
+
             border: 0;
             border-radius: 999px;
 
@@ -241,6 +289,7 @@
             font: inherit;
             font-size: 14px;
             font-weight: 700;
+
             cursor: pointer;
         }
 
@@ -248,26 +297,96 @@
             transform: scale(0.97);
         }
 
+        /* Zoom controls */
+        #zoom-controls {
+            position: fixed;
+
+            right: max(14px, env(safe-area-inset-right));
+            bottom: max(18px, env(safe-area-inset-bottom));
+
+            z-index: 9000;
+
+            display: flex;
+            align-items: center;
+            gap: 7px;
+
+            padding: 7px;
+
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 18px;
+
+            background: rgba(24, 30, 41, 0.88);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+
+            box-shadow:
+                0 8px 26px rgba(0, 0, 0, 0.36);
+        }
+
+        .zoom-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            width: 42px;
+            height: 42px;
+
+            border: 0;
+            border-radius: 13px;
+
+            background: rgba(255, 255, 255, 0.09);
+            color: #ffffff;
+
+            font-family: inherit;
+            font-size: 22px;
+            font-weight: 600;
+
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .zoom-button:active {
+            transform: scale(0.93);
+            background: rgba(255, 255, 255, 0.16);
+        }
+
+        #zoom-reset {
+            min-width: 58px;
+            padding: 0 10px;
+
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        #zoom-level {
+            min-width: 48px;
+
+            color: rgba(255, 255, 255, 0.82);
+
+            font-size: 12px;
+            font-weight: 700;
+            text-align: center;
+        }
+
         noscript {
             display: block;
+
             padding: 30px 20px;
+
             color: white;
             text-align: center;
         }
 
-        /* Avoid animations when user requests reduced motion */
         @media (prefers-reduced-motion: reduce) {
             *,
             *::before,
             *::after {
-                scroll-behavior: auto !important;
                 animation-duration: 0.01ms !important;
                 animation-iteration-count: 1 !important;
                 transition-duration: 0.01ms !important;
             }
         }
 
-        /* Larger screens */
         @media (min-width: 768px) {
             :root {
                 --page-gap: 16px;
@@ -276,7 +395,7 @@
 
             #pdf-container {
                 padding-top: 14px;
-                padding-bottom: 24px;
+                padding-bottom: 100px;
             }
         }
     </style>
@@ -284,24 +403,87 @@
 
 <body>
 
-    <!-- Initial loader -->
-    <div id="loading-screen" role="status" aria-live="polite">
+    <!-- Loading screen -->
+    <div
+        id="loading-screen"
+        role="status"
+        aria-live="polite"
+    >
         <div class="loader-content">
-            <div class="spinner" aria-hidden="true"></div>
-            <div id="loading-text">Prayer note load ho rahi hai...</div>
+            <div
+                class="spinner"
+                aria-hidden="true"
+            ></div>
+
+            <div id="loading-text">
+                Loading your prayer note...
+            </div>
         </div>
     </div>
 
-    <!-- PDF pages are inserted here -->
-    <main id="pdf-container" aria-label="Daily Prayer document"></main>
+    <!-- Rendered PDF pages -->
+    <main
+        id="pdf-container"
+        aria-label="Daily Prayer document"
+    ></main>
 
-    <!-- Only shown when loading fails -->
-    <section id="error-screen" role="alert">
+    <!-- Zoom controls -->
+    <div
+        id="zoom-controls"
+        aria-label="Document zoom controls"
+    >
+        <button
+            type="button"
+            class="zoom-button"
+            id="zoom-out"
+            aria-label="Zoom out"
+        >
+            −
+        </button>
+
+        <div id="zoom-level">100%</div>
+
+        <button
+            type="button"
+            class="zoom-button"
+            id="zoom-in"
+            aria-label="Zoom in"
+        >
+            +
+        </button>
+
+        <button
+            type="button"
+            class="zoom-button"
+            id="zoom-reset"
+            aria-label="Reset zoom"
+        >
+            Reset
+        </button>
+    </div>
+
+    <!-- Error screen -->
+    <section
+        id="error-screen"
+        role="alert"
+    >
         <div class="error-card">
-            <div class="error-icon" aria-hidden="true">⚠️</div>
-            <div class="error-title">Prayer note load nahi hui</div>
-            <div class="error-message" id="error-message">
-                Required files check karo.
+            <div
+                class="error-icon"
+                aria-hidden="true"
+            >
+                ⚠️
+            </div>
+
+            <div class="error-title">
+                Unable to open the document
+            </div>
+
+            <div
+                class="error-message"
+                id="error-message"
+            >
+                Please check the required document files.
             </div>
 
             <button
@@ -315,18 +497,14 @@
     </section>
 
     <noscript>
-        Is prayer note ko dekhne ke liye JavaScript enable hona zaroori hai.
+        JavaScript must be enabled to view this document.
     </noscript>
 
     <script type="module">
         "use strict";
 
         /*
-         * ==========================================================
-         * FILE PATHS
-         * ==========================================================
-         *
-         * Final GitHub structure:
+         * Required folder structure:
          *
          * public/
          * └── documents/
@@ -340,24 +518,25 @@
         const BASE_PATH = "/documents/";
 
         const PDF_URL =
-            `${BASE_PATH}prayer-note.pdf?v=1`;
+            `${BASE_PATH}prayer-note.pdf?v=2`;
 
         const PDFJS_MODULE_URL =
-            `${BASE_PATH}pdfjs/pdf.mjs`;
+            `${BASE_PATH}pdfjs/pdf.mjs?v=2`;
 
         const PDFJS_WORKER_URL =
-            `${BASE_PATH}pdfjs/pdf.worker.mjs`;
+            `${BASE_PATH}pdfjs/pdf.worker.mjs?v=2`;
 
         /*
-         * DevicePixelRatio ko limit karne se mobile WebView me
-         * memory usage kam rahega, lekin PDF sharp bhi dikhegi.
+         * Higher value improves text quality on modern phones.
+         * Value is limited to prevent excessive Android WebView memory use.
          */
-        const MAX_PIXEL_RATIO = 2;
+        const MAX_PIXEL_RATIO = 3;
+        const QUALITY_MULTIPLIER = 1.25;
 
-        /*
-         * Current viewport ke paas wale pages pehle render honge.
-         * Isse mobile RAM aur initial loading time improve hota hai.
-         */
+        const MIN_ZOOM = 1;
+        const MAX_ZOOM = 2.5;
+        const ZOOM_STEP = 0.25;
+
         const OBSERVER_MARGIN = "180% 0px";
 
         const container =
@@ -375,8 +554,27 @@
         const errorMessage =
             document.getElementById("error-message");
 
+        const zoomOutButton =
+            document.getElementById("zoom-out");
+
+        const zoomInButton =
+            document.getElementById("zoom-in");
+
+        const zoomResetButton =
+            document.getElementById("zoom-reset");
+
+        const zoomLevelText =
+            document.getElementById("zoom-level");
+
         let pdfDocument = null;
         let pageObserver = null;
+
+        let zoomLevel = 1;
+        let basePageWidth = 0;
+
+        let pinchStartDistance = 0;
+        let pinchStartZoom = 1;
+        let zoomRenderTimer = null;
 
         const renderedPages = new Set();
         const renderingPages = new Set();
@@ -393,11 +591,14 @@
             console.error("PDF Viewer Error:", error);
 
             hideLoadingScreen();
+
             container.hidden = true;
+            document.getElementById("zoom-controls").hidden = true;
+
             errorScreen.classList.add("visible");
 
             let message =
-                "PDF ya PDF.js files load nahi ho rahi hain.";
+                "The PDF or PDF.js files could not be loaded.";
 
             if (error instanceof Error && error.message) {
                 message += ` Error: ${error.message}`;
@@ -420,16 +621,104 @@
                 280,
                 Math.min(
                     900,
-                    container.clientWidth -
+                    window.innerWidth -
                     leftPadding -
                     rightPadding
                 )
             );
         }
 
+        function updateZoomDisplay() {
+            zoomLevelText.textContent =
+                `${Math.round(zoomLevel * 100)}%`;
+
+            zoomOutButton.disabled =
+                zoomLevel <= MIN_ZOOM;
+
+            zoomInButton.disabled =
+                zoomLevel >= MAX_ZOOM;
+
+            zoomOutButton.style.opacity =
+                zoomOutButton.disabled ? "0.4" : "1";
+
+            zoomInButton.style.opacity =
+                zoomInButton.disabled ? "0.4" : "1";
+        }
+
+        function applyPageWidths() {
+            const pages =
+                document.querySelectorAll(".pdf-page");
+
+            const newWidth =
+                basePageWidth * zoomLevel;
+
+            for (const pageElement of pages) {
+                pageElement.style.width =
+                    `${newWidth}px`;
+
+                pageElement.style.maxWidth =
+                    "none";
+            }
+
+            container.style.minWidth =
+                `${Math.max(window.innerWidth, newWidth + 16)}px`;
+        }
+
+        function scheduleSharpRerender() {
+            window.clearTimeout(zoomRenderTimer);
+
+            zoomRenderTimer = window.setTimeout(
+                () => {
+                    void rerenderVisiblePages();
+                },
+                180
+            );
+        }
+
+        function setZoom(nextZoom) {
+            zoomLevel =
+                Math.min(
+                    MAX_ZOOM,
+                    Math.max(MIN_ZOOM, nextZoom)
+                );
+
+            applyPageWidths();
+            updateZoomDisplay();
+            scheduleSharpRerender();
+        }
+
+        async function rerenderVisiblePages() {
+            const pages =
+                [...document.querySelectorAll(".pdf-page")];
+
+            for (const pageElement of pages) {
+                const rect =
+                    pageElement.getBoundingClientRect();
+
+                const isNearViewport =
+                    rect.bottom >= -window.innerHeight &&
+                    rect.top <= window.innerHeight * 2;
+
+                if (!isNearViewport) {
+                    continue;
+                }
+
+                const pageNumber =
+                    Number(pageElement.dataset.pageNumber);
+
+                renderedPages.delete(pageNumber);
+                pageElement.classList.remove("rendered");
+
+                await renderPage(pageElement);
+            }
+        }
+
         async function createPagePlaceholders() {
             const fragment =
                 document.createDocumentFragment();
+
+            basePageWidth =
+                getAvailablePageWidth();
 
             for (
                 let pageNumber = 1;
@@ -446,21 +735,26 @@
                     document.createElement("section");
 
                 pageElement.className = "pdf-page";
+
                 pageElement.dataset.pageNumber =
                     String(pageNumber);
 
-                /*
-                 * Browser ko render hone se pehle page ka exact
-                 * aspect ratio pata rahega. Isse layout jump nahi karega.
-                 */
                 pageElement.style.aspectRatio =
                     `${baseViewport.width} / ${baseViewport.height}`;
+
+                pageElement.style.width =
+                    `${basePageWidth}px`;
 
                 const placeholder =
                     document.createElement("div");
 
-                placeholder.className = "page-placeholder";
-                placeholder.setAttribute("aria-hidden", "true");
+                placeholder.className =
+                    "page-placeholder";
+
+                placeholder.setAttribute(
+                    "aria-hidden",
+                    "true"
+                );
 
                 const canvas =
                     document.createElement("canvas");
@@ -477,14 +771,12 @@
 
                 fragment.appendChild(pageElement);
 
-                /*
-                 * Viewport milne ke baad page object memory release.
-                 * Actual rendering ke waqt page dobara access hoga.
-                 */
                 page.cleanup();
             }
 
             container.replaceChildren(fragment);
+
+            applyPageWidths();
         }
 
         async function renderPage(pageElement) {
@@ -525,16 +817,18 @@
                 const cssWidth =
                     Math.max(
                         1,
-                        pageElement.clientWidth ||
-                        getAvailablePageWidth()
+                        pageElement.clientWidth
                     );
 
                 const cssScale =
                     cssWidth / baseViewport.width;
 
+                const deviceRatio =
+                    window.devicePixelRatio || 1;
+
                 const pixelRatio =
                     Math.min(
-                        window.devicePixelRatio || 1,
+                        deviceRatio * QUALITY_MULTIPLIER,
                         MAX_PIXEL_RATIO
                     );
 
@@ -578,16 +872,12 @@
 
                 page.cleanup();
 
-                /*
-                 * First page ready hote hi loading screen remove.
-                 * Baaki pages background me zarurat ke waqt render honge.
-                 */
                 if (pageNumber === 1) {
                     hideLoadingScreen();
                 }
             } catch (error) {
                 console.error(
-                    `Page ${pageNumber} render failed:`,
+                    `Page ${pageNumber} rendering failed:`,
                     error
                 );
 
@@ -606,7 +896,7 @@
                             text-align:center;
                         "
                     >
-                        Page ${pageNumber} load nahi hui.
+                        Page ${pageNumber} could not be displayed.
                     </div>
                 `;
             } finally {
@@ -618,36 +908,35 @@
             const pageElements =
                 [...document.querySelectorAll(".pdf-page")];
 
-            /*
-             * Old Android WebView fallback:
-             * IntersectionObserver unavailable ho toh sab pages
-             * sequentially render karenge.
-             */
             if (!("IntersectionObserver" in window)) {
                 void renderPagesSequentially(pageElements);
                 return;
             }
 
-            pageObserver = new IntersectionObserver(
-                entries => {
-                    for (const entry of entries) {
-                        if (!entry.isIntersecting) {
-                            continue;
+            pageObserver =
+                new IntersectionObserver(
+                    entries => {
+                        for (const entry of entries) {
+                            if (!entry.isIntersecting) {
+                                continue;
+                            }
+
+                            const pageElement =
+                                entry.target;
+
+                            void renderPage(pageElement);
+
+                            pageObserver.unobserve(
+                                pageElement
+                            );
                         }
-
-                        const pageElement = entry.target;
-
-                        void renderPage(pageElement);
-
-                        pageObserver.unobserve(pageElement);
+                    },
+                    {
+                        root: null,
+                        rootMargin: OBSERVER_MARGIN,
+                        threshold: 0.01
                     }
-                },
-                {
-                    root: null,
-                    rootMargin: OBSERVER_MARGIN,
-                    threshold: 0.01
-                }
-            );
+                );
 
             for (const pageElement of pageElements) {
                 pageObserver.observe(pageElement);
@@ -660,16 +949,114 @@
             }
         }
 
+        function getTouchDistance(touchOne, touchTwo) {
+            const deltaX =
+                touchTwo.clientX - touchOne.clientX;
+
+            const deltaY =
+                touchTwo.clientY - touchOne.clientY;
+
+            return Math.hypot(deltaX, deltaY);
+        }
+
+        function setupZoomControls() {
+            zoomInButton.addEventListener(
+                "click",
+                () => {
+                    setZoom(zoomLevel + ZOOM_STEP);
+                }
+            );
+
+            zoomOutButton.addEventListener(
+                "click",
+                () => {
+                    setZoom(zoomLevel - ZOOM_STEP);
+                }
+            );
+
+            zoomResetButton.addEventListener(
+                "click",
+                () => {
+                    setZoom(1);
+                    window.scrollTo({
+                        left: 0,
+                        behavior: "smooth"
+                    });
+                }
+            );
+
+            container.addEventListener(
+                "touchstart",
+                event => {
+                    if (event.touches.length !== 2) {
+                        return;
+                    }
+
+                    pinchStartDistance =
+                        getTouchDistance(
+                            event.touches[0],
+                            event.touches[1]
+                        );
+
+                    pinchStartZoom =
+                        zoomLevel;
+                },
+                {
+                    passive: true
+                }
+            );
+
+            container.addEventListener(
+                "touchmove",
+                event => {
+                    if (
+                        event.touches.length !== 2 ||
+                        pinchStartDistance <= 0
+                    ) {
+                        return;
+                    }
+
+                    const currentDistance =
+                        getTouchDistance(
+                            event.touches[0],
+                            event.touches[1]
+                        );
+
+                    const scaleChange =
+                        currentDistance /
+                        pinchStartDistance;
+
+                    setZoom(
+                        pinchStartZoom * scaleChange
+                    );
+                },
+                {
+                    passive: true
+                }
+            );
+
+            container.addEventListener(
+                "touchend",
+                event => {
+                    if (event.touches.length < 2) {
+                        pinchStartDistance = 0;
+                        scheduleSharpRerender();
+                    }
+                },
+                {
+                    passive: true
+                }
+            );
+
+            updateZoomDisplay();
+        }
+
         async function startViewer() {
             try {
                 updateLoadingText(
-                    "PDF engine load ho raha hai..."
+                    "Loading PDF engine..."
                 );
 
-                /*
-                 * Dynamic import use kiya hai taaki PDF.js missing ho
-                 * toh blank page ke bajay proper error show ho.
-                 */
                 const pdfjsLib =
                     await import(PDFJS_MODULE_URL);
 
@@ -677,60 +1064,52 @@
                     PDFJS_WORKER_URL;
 
                 updateLoadingText(
-                    "Prayer note download ho rahi hai..."
+                    "Loading your prayer note..."
                 );
 
                 const loadingTask =
                     pdfjsLib.getDocument({
                         url: PDF_URL,
-
-                        /*
-                         * Fonts aur system resources ko PDF ke andar
-                         * available data se render karne me help karta hai.
-                         */
                         useSystemFonts: true,
-
-                        /*
-                         * Normal HTTP/HTTPS hosting ke liye safe defaults.
-                         */
                         disableRange: false,
                         disableStream: false,
                         disableAutoFetch: false
                     });
 
-                loadingTask.onProgress = progress => {
-                    if (
-                        !progress.total ||
-                        progress.total <= 0
-                    ) {
-                        return;
-                    }
+                loadingTask.onProgress =
+                    progress => {
+                        if (
+                            !progress.total ||
+                            progress.total <= 0
+                        ) {
+                            return;
+                        }
 
-                    const percent =
-                        Math.min(
-                            100,
-                            Math.round(
-                                (progress.loaded / progress.total) * 100
-                            )
+                        const percent =
+                            Math.min(
+                                100,
+                                Math.round(
+                                    (
+                                        progress.loaded /
+                                        progress.total
+                                    ) * 100
+                                )
+                            );
+
+                        updateLoadingText(
+                            `Loading your prayer note... ${percent}%`
                         );
-
-                    updateLoadingText(
-                        `Prayer note load ho rahi hai... ${percent}%`
-                    );
-                };
+                    };
 
                 pdfDocument =
                     await loadingTask.promise;
 
                 updateLoadingText(
-                    `${pdfDocument.numPages} pages tayyar ho rahe hain...`
+                    `Preparing ${pdfDocument.numPages} pages...`
                 );
 
                 await createPagePlaceholders();
 
-                /*
-                 * First page immediately render karo.
-                 */
                 const firstPage =
                     document.querySelector(
                         '.pdf-page[data-page-number="1"]'
@@ -738,33 +1117,48 @@
 
                 if (!firstPage) {
                     throw new Error(
-                        "First PDF page could not be created."
+                        "The first document page could not be created."
                     );
                 }
 
                 await renderPage(firstPage);
 
-                /*
-                 * Remaining pages lazy render honge.
-                 */
                 setupLazyRendering();
+                setupZoomControls();
             } catch (error) {
                 showError(error);
             }
         }
 
-        /*
-         * Browser back-forward cache se restore hone par canvas
-         * content normally preserved rahega.
-         */
-        window.addEventListener("pageshow", event => {
-            if (
-                event.persisted &&
-                renderedPages.size === 0
-            ) {
-                window.location.reload();
+        window.addEventListener(
+            "pageshow",
+            event => {
+                if (
+                    event.persisted &&
+                    renderedPages.size === 0
+                ) {
+                    window.location.reload();
+                }
             }
-        });
+        );
+
+        window.addEventListener(
+            "resize",
+            () => {
+                if (
+                    zoomLevel !== 1 ||
+                    !pdfDocument
+                ) {
+                    return;
+                }
+
+                basePageWidth =
+                    getAvailablePageWidth();
+
+                applyPageWidths();
+                scheduleSharpRerender();
+            }
+        );
 
         void startViewer();
     </script>
