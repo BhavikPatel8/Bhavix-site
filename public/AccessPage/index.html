@@ -1,0 +1,1946 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#08090A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<meta name="referrer" content="no-referrer">
+<title>Player</title>
+
+<style>
+/* ============================================================================
+   TOKENS
+   Graphite chassis + a single tungsten-amber accent. Amber marks only "what is
+   happening right now" (progress, current selection, live gesture value).
+   ==========================================================================*/
+:root{
+  --bg:#08090A;
+  --surface:#121317;
+  --raised:#1C1E24;
+  --hairline:rgba(255,255,255,.09);
+  --text:#EDEEF1;
+  --dim:#9AA0AB;
+  --dimmer-text:#6C7280;
+  --amber:#FFB020;
+  --amber-soft:rgba(255,176,32,.16);
+  --track:rgba(255,255,255,.18);
+  --buffer:rgba(255,255,255,.34);
+  --glass:rgba(10,11,13,.58);
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --sl:env(safe-area-inset-left,0px);
+  --sr:env(safe-area-inset-right,0px);
+  --st:env(safe-area-inset-top,0px);
+  --sb:env(safe-area-inset-bottom,0px);
+
+  /* ---- Z-INDEX LADDER (single source of truth) ---------------------------
+     1 video · 2 dimmer · 3 gestures · 4 spinner · 5 HUD · 6 controls
+     7 lock · 8 notice · 9 sheet · 10 toast
+     --------------------------------------------------------------------- */
+  --z-video:1; --z-dimmer:2; --z-gestures:3; --z-spinner:4; --z-hud:5;
+  --z-controls:6; --z-lock:7; --z-notice:8; --z-sheet:9; --z-toast:10;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+html,body{
+  height:100%;width:100%;
+  background:var(--bg);color:var(--text);
+  overflow:hidden;
+  overscroll-behavior:none;            /* no pull-to-refresh, no rubber band */
+  -webkit-user-select:none;user-select:none;
+  -webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;           /* kills double-tap zoom, keeps nested
+                                          scrolling alive for the sheet      */
+  font-family:Roboto,-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  font-size:15px;line-height:1.4;
+  -webkit-font-smoothing:antialiased;
+}
+
+button,input{font:inherit;color:inherit;background:none;border:0;-webkit-tap-highlight-color:transparent}
+button{touch-action:manipulation;cursor:pointer}
+svg{display:block;pointer-events:none}
+.tnum{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:8px}
+
+/* ============================================================================
+   STAGE + VIDEO
+   ==========================================================================*/
+#stage{position:fixed;inset:0;width:100%;height:100%;background:#000;overflow:hidden}
+
+#video{
+  position:absolute;inset:0;z-index:var(--z-video);
+  width:100%;height:100%;
+  object-fit:contain;background:#000;display:block;
+}
+#video.fill{object-fit:cover}
+
+#dimmer{
+  position:absolute;inset:0;z-index:var(--z-dimmer);
+  background:#000;opacity:0;pointer-events:none;will-change:opacity;
+}
+
+#gestures{position:absolute;inset:0;z-index:var(--z-gestures);touch-action:none}
+
+/* ============================================================================
+   SPINNER
+   ==========================================================================*/
+#spinner{
+  position:absolute;left:50%;top:50%;z-index:var(--z-spinner);
+  width:40px;height:40px;margin:-20px 0 0 -20px;
+  border:2.5px solid rgba(255,255,255,.14);
+  border-top-color:var(--amber);border-radius:50%;
+  animation:spin .8s linear infinite;
+  opacity:0;pointer-events:none;transition:opacity .18s linear;
+}
+#spinner.on{opacity:1}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ============================================================================
+   HUDs — glass, minimal, never a heavy black slab
+   ==========================================================================*/
+.hud{
+  position:absolute;left:50%;top:50%;z-index:var(--z-hud);
+  transform:translate(-50%,-50%);
+  pointer-events:none;opacity:0;
+  transition:opacity .13s linear;
+}
+.hud.on{opacity:1}
+
+#hudSeek{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 20px}
+#hudSeekDelta{
+  font-size:30px;font-weight:600;letter-spacing:-.6px;color:#fff;
+  text-shadow:0 2px 14px rgba(0,0,0,.85),0 0 3px rgba(0,0,0,.7);
+  display:flex;align-items:center;gap:7px;
+}
+#hudSeekDelta svg{width:24px;height:24px;fill:#fff;filter:drop-shadow(0 2px 10px rgba(0,0,0,.8))}
+#hudSeekTime{
+  font-size:13px;color:rgba(255,255,255,.82);
+  text-shadow:0 1px 8px rgba(0,0,0,.9);
+}
+
+#hudLevel{
+  width:180px;padding:14px 16px 12px;
+  background:var(--glass);
+  border:1px solid var(--hairline);border-radius:14px;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+}
+.hud-row{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+.hud-row svg{width:20px;height:20px;flex:none;fill:var(--text)}
+#hudLevelLabel{font-size:12.5px;color:var(--dim);flex:1}
+#hudLevelValue{font-size:18px;font-weight:600;letter-spacing:-.3px}
+.hud-track{height:3px;border-radius:2px;background:var(--track);overflow:hidden}
+.hud-fill{height:100%;background:var(--amber);transform-origin:left center;transform:scaleX(0);will-change:transform}
+
+/* Double-tap ripple */
+.tap-ripple{
+  position:absolute;top:50%;z-index:var(--z-hud);
+  width:120px;height:120px;margin-top:-60px;
+  border-radius:50%;background:rgba(255,255,255,.14);
+  transform:scale(.4);opacity:0;pointer-events:none;
+}
+.tap-ripple.go{animation:ripple .42s var(--ease)}
+@keyframes ripple{
+  0%{transform:scale(.4);opacity:.85}
+  100%{transform:scale(1.5);opacity:0}
+}
+
+/* ============================================================================
+   CONTROLS
+   ==========================================================================*/
+#controls{
+  position:absolute;inset:0;z-index:var(--z-controls);
+  pointer-events:none;opacity:0;
+  transition:opacity .2s var(--ease);
+}
+#controls.on{opacity:1}
+/* Hit-testing only while visible, otherwise invisible buttons eat gestures */
+#controls.on button,#controls.on .hit{pointer-events:auto}
+
+.scrim-t,.scrim-b{position:absolute;left:0;right:0;pointer-events:none}
+.scrim-t{top:0;height:108px;background:linear-gradient(180deg,rgba(0,0,0,.80),rgba(0,0,0,.38) 48%,transparent)}
+.scrim-b{bottom:0;height:164px;background:linear-gradient(0deg,rgba(0,0,0,.88),rgba(0,0,0,.44) 48%,transparent)}
+
+.topbar{
+  position:absolute;top:0;left:0;right:0;
+  display:flex;align-items:center;gap:4px;
+  padding:calc(8px + var(--st)) calc(10px + var(--sr)) 8px calc(10px + var(--sl));
+}
+.titles{flex:1;min-width:0;padding:0 6px}
+.titles h1{font-size:15px;font-weight:600;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.titles p{font-size:11.5px;color:var(--dim);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.ib{
+  width:42px;height:42px;flex:none;
+  display:grid;place-items:center;border-radius:11px;
+  transition:background .12s linear,transform .1s linear;
+}
+.ib svg{width:22px;height:22px;fill:var(--text)}
+.ib.sm{width:38px;height:38px}
+.ib.sm svg{width:20px;height:20px}
+.ib:active{background:var(--raised);transform:scale(.92)}
+.ib[disabled]{opacity:.34;pointer-events:none}
+
+.transport{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  display:flex;align-items:center;gap:32px;
+}
+.transport .skip{width:50px;height:50px}
+.transport .skip svg{width:29px;height:29px}
+.playbtn{
+  width:70px;height:70px;display:grid;place-items:center;border-radius:50%;
+  background:rgba(12,13,16,.5);border:1px solid var(--hairline);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  transition:transform .12s var(--ease),background .12s linear;
+}
+.playbtn svg{width:30px;height:30px;fill:var(--text)}
+.playbtn:active{transform:scale(.9);background:var(--raised)}
+
+.bottombar{
+  position:absolute;left:0;right:0;bottom:0;
+  padding:0 calc(12px + var(--sr)) calc(8px + var(--sb)) calc(12px + var(--sl));
+}
+
+/* ---- Timeline ---------------------------------------------------------- */
+.timeline{
+  position:relative;height:28px;display:flex;align-items:center;
+  touch-action:none;
+}
+.tl-track{position:absolute;left:0;right:0;top:50%;height:3.5px;margin-top:-1.75px;background:var(--track);border-radius:3px;overflow:hidden}
+.tl-buf,.tl-prog{position:absolute;inset:0;transform-origin:left center;transform:scaleX(0);will-change:transform}
+.tl-buf{background:var(--buffer)}
+.tl-prog{background:var(--amber)}
+.tl-thumb{
+  position:absolute;top:50%;left:0;width:12px;height:12px;margin:-6px 0 0 -6px;
+  border-radius:50%;background:var(--amber);
+  box-shadow:0 0 0 0 var(--amber-soft);
+  transition:box-shadow .15s var(--ease),transform .15s var(--ease);
+  will-change:left;
+}
+.timeline.scrub .tl-thumb{transform:scale(1.3);box-shadow:0 0 0 9px var(--amber-soft)}
+.tl-preview{
+  position:absolute;bottom:28px;left:0;transform:translateX(-50%);
+  padding:5px 10px;font-size:12.5px;
+  background:var(--glass);border:1px solid var(--hairline);border-radius:8px;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  opacity:0;transition:opacity .12s linear;pointer-events:none;white-space:nowrap;
+}
+.timeline.scrub .tl-preview{opacity:1}
+
+.actions{display:flex;align-items:center;gap:2px;margin-top:1px}
+.times{font-size:12.5px;color:var(--dim);padding:0 6px 0 2px;flex:none;white-space:nowrap}
+.times b{color:var(--text);font-weight:500}
+.grow{flex:1;min-width:8px}
+
+.chip{
+  height:32px;display:flex;align-items:center;gap:6px;
+  padding:0 11px;margin-right:2px;border-radius:9px;
+  border:1px solid var(--hairline);font-size:12.5px;
+  transition:background .12s linear,transform .1s linear;
+  white-space:nowrap;
+}
+.chip svg{width:15px;height:15px;fill:var(--dim);flex:none}
+.chip:active{background:var(--raised);transform:scale(.95)}
+.chip[disabled]{opacity:.34;pointer-events:none}
+
+/* ---- Responsive: never let the action row overflow --------------------- */
+@media (max-width:430px){
+  .chip{padding:0 9px;gap:5px}
+  .chip .lbl{display:none}          /* icon-only chips on narrow phones */
+  .transport{gap:26px}
+}
+@media (max-width:340px){
+  .times{font-size:11.5px;padding-right:2px}
+  .ib{width:38px;height:38px}
+}
+/* Landscape phones: short viewport, tighten everything vertically */
+@media (max-height:420px) and (orientation:landscape){
+  .scrim-t{height:88px}
+  .scrim-b{height:132px}
+  .playbtn{width:60px;height:60px}
+  .playbtn svg{width:26px;height:26px}
+  .transport .skip{width:44px;height:44px}
+  .transport .skip svg{width:25px;height:25px}
+  .topbar{padding-top:calc(5px + var(--st));padding-bottom:5px}
+}
+
+/* ============================================================================
+   LOCK MODE — video plus almost nothing
+   ==========================================================================*/
+#lock{position:absolute;inset:0;z-index:var(--z-lock);display:none;touch-action:none}
+#lock.on{display:block}
+
+#unlockBtn{
+  position:absolute;top:50%;left:calc(16px + var(--sl));
+  transform:translateY(-50%) scale(.85);
+  width:50px;height:50px;display:grid;place-items:center;border-radius:50%;
+  background:rgba(12,13,16,.34);border:1px solid rgba(255,255,255,.14);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  opacity:0;pointer-events:none;
+  transition:opacity .18s var(--ease),transform .18s var(--ease);
+}
+#unlockBtn.on{opacity:1;pointer-events:auto;transform:translateY(-50%) scale(1)}
+#unlockBtn svg{width:22px;height:22px;fill:rgba(255,255,255,.9)}
+#unlockBtn:active{transform:translateY(-50%) scale(.92)}
+
+/* The subtle lock flash — no slab, no persistent banner */
+#lockFlash{
+  position:absolute;left:50%;top:50%;z-index:var(--z-toast);
+  transform:translate(-50%,-50%);
+  display:flex;align-items:center;gap:7px;
+  padding:7px 14px;border-radius:20px;
+  background:rgba(0,0,0,.22);
+  font-size:13px;color:rgba(255,255,255,.88);
+  text-shadow:0 1px 8px rgba(0,0,0,.8);
+  opacity:0;pointer-events:none;
+}
+#lockFlash svg{width:15px;height:15px;fill:rgba(255,255,255,.88);filter:drop-shadow(0 1px 6px rgba(0,0,0,.8))}
+#lockFlash.go{animation:flash 1.25s var(--ease) forwards}
+@keyframes flash{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.94)}
+  12%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  72%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1)}
+}
+
+/* ============================================================================
+   BOTTOM SHEET
+   ==========================================================================*/
+#sheet{position:absolute;inset:0;z-index:var(--z-sheet);display:none}
+#sheet.on{display:block}
+#sheetBack{position:absolute;inset:0;background:rgba(0,0,0,.5)}
+.panel{
+  position:absolute;left:0;right:0;bottom:0;max-height:80%;
+  display:flex;flex-direction:column;
+  background:var(--surface);border-top:1px solid var(--hairline);
+  border-radius:18px 18px 0 0;padding-bottom:var(--sb);
+  transform:translateY(100%);animation:up .22s var(--ease) forwards;
+}
+@keyframes up{to{transform:translateY(0)}}
+.grip{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.16);margin:9px auto 2px;flex:none}
+.shead{display:flex;align-items:center;gap:8px;padding:6px 8px 8px 18px;flex:none}
+.shead h2{font-size:15px;font-weight:600;flex:1;letter-spacing:-.2px}
+.snote{padding:0 18px 12px;font-size:12px;color:var(--dim);line-height:1.5;max-width:62ch}
+.sbody{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;padding:0 8px 14px}
+
+.opt{width:100%;display:flex;align-items:center;gap:12px;padding:12px;border-radius:11px;text-align:left;transition:background .12s linear}
+.opt:active{background:var(--raised)}
+.opt-t{flex:1;min-width:0}
+.opt-l{font-size:14.5px}
+.opt-m{font-size:11.5px;color:var(--dim);margin-top:2px;line-height:1.4}
+.opt-tick{width:20px;height:20px;flex:none;fill:var(--amber);opacity:0}
+.opt.sel .opt-l{color:var(--amber);font-weight:500}
+.opt.sel .opt-tick{opacity:1}
+.opt.off{opacity:.42;pointer-events:none}
+.opt.off .opt-m{color:var(--dimmer-text)}
+
+/* ---- Custom speed panel ------------------------------------------------- */
+.speedwrap{padding:4px 14px 8px}
+.speedval{font-size:34px;font-weight:600;letter-spacing:-1px;text-align:center;color:var(--amber);margin:2px 0 14px}
+.speedslider{
+  -webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;
+  touch-action:none;display:block;
+}
+.speedslider::-webkit-slider-runnable-track{height:4px;border-radius:3px;background:var(--track)}
+.speedslider::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;
+  background:var(--amber);margin-top:-9px;border:0;
+  box-shadow:0 1px 6px rgba(0,0,0,.5);
+}
+.speedslider::-moz-range-track{height:4px;border-radius:3px;background:var(--track)}
+.speedslider::-moz-range-thumb{width:22px;height:22px;border:0;border-radius:50%;background:var(--amber)}
+.speedends{display:flex;justify-content:space-between;font-size:11.5px;color:var(--dim);margin-top:2px}
+.speedticks{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 4px;justify-content:center}
+.tick{padding:6px 11px;border:1px solid var(--hairline);border-radius:9px;font-size:12.5px;color:var(--dim)}
+.tick:active{background:var(--raised)}
+.srow{display:flex;gap:10px;padding:16px 14px 6px}
+.btn{flex:1;height:44px;border-radius:11px;font-size:14.5px;font-weight:500;display:grid;place-items:center}
+.btn.ghost{border:1px solid var(--hairline);color:var(--text)}
+.btn.primary{background:var(--amber);color:#000}
+.btn:active{transform:scale(.98)}
+
+/* ============================================================================
+   NOTICE + TOAST
+   ==========================================================================*/
+#notice{position:absolute;inset:0;z-index:var(--z-notice);display:none;place-items:center;background:rgba(8,9,10,.94);padding:30px;text-align:center}
+#notice.on{display:grid}
+#notice .in{max-width:44ch}
+#notice h3{font-size:16px;font-weight:600;margin-bottom:7px}
+#notice p{font-size:13px;color:var(--dim);line-height:1.6}
+#notice button{margin-top:18px;padding:11px 22px;border-radius:10px;background:var(--amber);color:#000;font-size:14px;font-weight:600}
+
+#toast{
+  position:absolute;left:50%;bottom:calc(26px + var(--sb));transform:translateX(-50%);
+  z-index:var(--z-toast);
+  padding:8px 15px;border-radius:20px;
+  background:var(--glass);border:1px solid var(--hairline);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  font-size:12.5px;color:var(--text);
+  opacity:0;pointer-events:none;transition:opacity .2s var(--ease);
+  white-space:nowrap;max-width:88vw;overflow:hidden;text-overflow:ellipsis;
+}
+#toast.on{opacity:1}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+
+<body>
+
+<!-- SVG sprite ------------------------------------------------------------ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.14v13.72c0 .76.83 1.23 1.49.85l11.14-6.86a1 1 0 0 0 0-1.7L9.49 4.29A1 1 0 0 0 8 5.14z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6.8" y="4" width="3.6" height="16" rx="1.2"/><rect x="13.6" y="4" width="3.6" height="16" rx="1.2"/></symbol>
+  <symbol id="i-replay" viewBox="0 0 24 24"><path d="M12 5V2.5c0-.45-.54-.67-.85-.35L7.6 5.29a.5.5 0 0 0 0 .71l3.55 3.15c.31.31.85.08.85-.36V6a6 6 0 1 1-6 6 1 1 0 1 0-2 0 8 8 0 1 0 8-8z"/></symbol>
+  <symbol id="i-back10" viewBox="0 0 24 24"><path d="M12 5V2.2c0-.4-.47-.6-.75-.32L7.3 5.62a.45.45 0 0 0 0 .64l3.95 3.86c.28.28.75.08.75-.32V7a5.5 5.5 0 1 1-5.5 5.5 1 1 0 1 0-2 0A7.5 7.5 0 1 0 12 5z"/><text x="12" y="16.2" font-size="7.2" font-family="Roboto,Arial" font-weight="700" text-anchor="middle">10</text></symbol>
+  <symbol id="i-fwd10" viewBox="0 0 24 24"><path d="M12 5V2.2c0-.4.47-.6.75-.32l3.95 3.74a.45.45 0 0 1 0 .64l-3.95 3.86c-.28.28-.75.08-.75-.32V7a5.5 5.5 0 1 0 5.5 5.5 1 1 0 1 1 2 0A7.5 7.5 0 1 1 12 5z"/><text x="12" y="16.2" font-size="7.2" font-family="Roboto,Arial" font-weight="700" text-anchor="middle">10</text></symbol>
+  <symbol id="i-rew" viewBox="0 0 24 24"><path d="M11.5 12 20 6.6v10.8zm-8 0L12 6.6v10.8z"/></symbol>
+  <symbol id="i-ff" viewBox="0 0 24 24"><path d="M12.5 12 4 17.4V6.6zm8 0L12 17.4V6.6z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 1 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2zm-7-2a2 2 0 1 1 4 0v2h-4zm2 11a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6z"/></symbol>
+  <symbol id="i-unlock" viewBox="0 0 24 24"><path d="M17 9H10V7a2 2 0 1 1 4 0 1 1 0 0 0 2 0 4 4 0 1 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2zm-5 9a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6z"/></symbol>
+  <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9v6h3.6l4.6 3.9a.7.7 0 0 0 1.15-.54V5.64A.7.7 0 0 0 12.2 5.1L7.6 9zm12.2-.7a1 1 0 0 0-1.3 1.52 3 3 0 0 1 0 4.36 1 1 0 0 0 1.3 1.52 5 5 0 0 0 0-7.4zm2.3-3a1 1 0 1 0-1.2 1.6 7 7 0 0 1 0 10.2 1 1 0 1 0 1.2 1.6 9 9 0 0 0 0-13.4z"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h3.6l4.6 3.9a.7.7 0 0 0 1.15-.54V5.64A.7.7 0 0 0 12.2 5.1L7.6 9zm16.2.3a1 1 0 0 0-1.4-1.4L17 9.68l-1.8-1.78a1 1 0 1 0-1.4 1.4L15.6 11l-1.8 1.8a1 1 0 0 0 1.4 1.42L17 12.42l1.8 1.8a1 1 0 0 0 1.4-1.42L18.42 11z"/></symbol>
+  <symbol id="i-bright" viewBox="0 0 24 24"><path d="M12 7.6A4.4 4.4 0 1 0 12 16.4 4.4 4.4 0 0 0 12 7.6zm0-5.6a1 1 0 0 1 1 1v1.6a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1zm0 16.8a1 1 0 0 1 1 1V21a1 1 0 1 1-2 0v-1.2a1 1 0 0 1 1-1zM21 11a1 1 0 0 1 0 2h-1.2a1 1 0 1 1 0-2zM4.2 11a1 1 0 1 1 0 2H3a1 1 0 1 1 0-2zm14.14-6.34a1 1 0 0 1 0 1.42l-.85.84a1 1 0 0 1-1.4-1.42l.84-.84a1 1 0 0 1 1.41 0zM7.9 16.1a1 1 0 0 1 0 1.42l-.84.84a1 1 0 1 1-1.42-1.42l.85-.84a1 1 0 0 1 1.41 0zm10.44 1.42a1 1 0 0 1-1.41 1.42l-.85-.84a1 1 0 0 1 1.41-1.42zM7.9 7.9A1 1 0 0 1 6.49 7.9l-.85-.84A1 1 0 1 1 7.06 5.64l.84.85A1 1 0 0 1 7.9 7.9z"/></symbol>
+  <symbol id="i-speed" viewBox="0 0 24 24"><path d="M12 4a9 9 0 0 0-7.8 13.5 1 1 0 0 0 1.74-1A7 7 0 1 1 18.06 16.5a1 1 0 0 0 1.74 1A9 9 0 0 0 12 4zm3.9 4.6-4.2 3.02a1.9 1.9 0 1 0 1.47 1.47l3.02-4.2a.26.26 0 0 0-.3-.3z"/></symbol>
+  <symbol id="i-audio" viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 0-7 7v5.4A2.6 2.6 0 0 0 7.6 18h.9a1 1 0 0 0 1-1v-4.6a1 1 0 0 0-1-1H7v-1.4a5 5 0 1 1 10 0v1.4h-1.5a1 1 0 0 0-1 1V17a1 1 0 0 0 1 1h.9a2.6 2.6 0 0 0 2.6-2.6V10a7 7 0 0 0-7-7z"/></symbol>
+  <symbol id="i-quality" viewBox="0 0 24 24"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-3.6l.5 1.6H16a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h1.1l.5-1.6H6a2 2 0 0 1-2-2zm2 .4v8.2h12V6.4z"/></symbol>
+  <symbol id="i-fs" viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4a1 1 0 1 1 0 2H6v3a1 1 0 0 1-2 0zm11-4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 1 1-2 0V6h-3a1 1 0 0 1-1-1zM5 14a1 1 0 0 1 1 1v3h3a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1zm14 0a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4a1 1 0 1 1 0-2h3v-3a1 1 0 0 1 1-1z"/></symbol>
+  <symbol id="i-fsx" viewBox="0 0 24 24"><path d="M9 4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H5a1 1 0 1 1 0-2h3V5a1 1 0 0 1 1-1zm6 0a1 1 0 0 1 1 1v3h3a1 1 0 1 1 0 2h-4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM4 15a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 1 1-2 0v-3H5a1 1 0 0 1-1-1zm10 0a1 1 0 0 1 1-1h4a1 1 0 1 1 0 2h-3v3a1 1 0 1 1-2 0z"/></symbol>
+  <symbol id="i-tick" viewBox="0 0 24 24"><path d="M9.6 16.2 5.4 12l-1.4 1.4 5.6 5.6L20.4 8.2 19 6.8z"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M18.3 5.7a1 1 0 0 0-1.4 0L12 10.6 7.1 5.7a1 1 0 1 0-1.4 1.4l4.9 4.9-4.9 4.9a1 1 0 1 0 1.4 1.4l4.9-4.9 4.9 4.9a1 1 0 0 0 1.4-1.4L13.4 12l4.9-4.9a1 1 0 0 0 0-1.4z"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M15.4 5.6a1 1 0 0 0-1.42 0l-5.7 5.7a1 1 0 0 0 0 1.4l5.7 5.7a1 1 0 0 0 1.42-1.4L10.4 12l5-4.99a1 1 0 0 0 0-1.41z"/></symbol>
+  <symbol id="i-zoom" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5a1 1 0 1 1 0 2H5v4a1 1 0 1 1-2 0zm11-2h5a2 2 0 0 1 2 2v4a1 1 0 1 1-2 0V7h-5a1 1 0 1 1 0-2zM4 13a1 1 0 0 1 1 1v3h5a1 1 0 1 1 0 2H5a2 2 0 0 1-2-2v-3a1 1 0 0 1 1-1zm16 0a1 1 0 0 1 1 1v3a2 2 0 0 1-2 2h-5a1 1 0 1 1 0-2h5v-3a1 1 0 0 1 1-1z"/></symbol>
+</defs></svg>
+
+
+<div id="stage">
+
+  <!-- playsinline + webkit-playsinline keep playback inside the WebView.
+       No crossorigin attribute: nothing here reads pixels or external tracks,
+       and adding it would make R2 delivery fail without a CORS policy. -->
+  <video id="video" playsinline webkit-playsinline preload="metadata"
+         disablepictureinpicture disableremoteplayback x5-playsinline></video>
+
+  <div id="dimmer"></div>
+  <div id="gestures"></div>
+  <div id="spinner"></div>
+
+  <div class="tap-ripple" id="rippleL" style="left:4%"></div>
+  <div class="tap-ripple" id="rippleR" style="right:4%"></div>
+
+  <div class="hud" id="hudSeek">
+    <div id="hudSeekDelta" class="tnum"><svg id="hudSeekIcon"><use href="#i-ff"></use></svg><span id="hudSeekNum">+10s</span></div>
+    <div id="hudSeekTime" class="tnum">00:00 / 00:00</div>
+  </div>
+
+  <div class="hud" id="hudLevel">
+    <div class="hud-row">
+      <svg id="hudLevelIcon"><use href="#i-vol"></use></svg>
+      <span id="hudLevelLabel">Volume</span>
+      <span id="hudLevelValue" class="tnum">0%</span>
+    </div>
+    <div class="hud-track"><div class="hud-fill" id="hudLevelFill"></div></div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div id="controls">
+    <div class="scrim-t"></div>
+    <div class="scrim-b"></div>
+
+    <div class="topbar">
+      <button class="ib" id="btnBack" aria-label="Go back"><svg><use href="#i-chev"></use></svg></button>
+      <div class="titles">
+        <h1 id="tTitle">Loading</h1>
+        <p id="tSub">Preparing playback</p>
+      </div>
+      <button class="ib sm" id="btnZoom" aria-label="Switch between fit and fill"><svg><use href="#i-zoom"></use></svg></button>
+      <button class="ib" id="btnLock" aria-label="Lock screen"><svg><use href="#i-lock"></use></svg></button>
+    </div>
+
+    <div class="transport">
+      <button class="ib skip" id="btnBack10" aria-label="Rewind 10 seconds"><svg><use href="#i-back10"></use></svg></button>
+      <button class="playbtn" id="btnPlay" aria-label="Play"><svg id="playIcon"><use href="#i-play"></use></svg></button>
+      <button class="ib skip" id="btnFwd10" aria-label="Forward 10 seconds"><svg><use href="#i-fwd10"></use></svg></button>
+    </div>
+
+    <div class="bottombar">
+      <div class="timeline hit" id="timeline" role="slider" aria-label="Seek" aria-valuemin="0" aria-valuenow="0">
+        <div class="tl-track">
+          <div class="tl-buf" id="tlBuf"></div>
+          <div class="tl-prog" id="tlProg"></div>
+        </div>
+        <div class="tl-thumb" id="tlThumb"></div>
+        <div class="tl-preview tnum" id="tlPreview">00:00</div>
+      </div>
+
+      <div class="actions">
+        <div class="times tnum"><b id="tCur">00:00</b> / <span id="tDur">00:00</span></div>
+        <div class="grow"></div>
+        <button class="chip" id="btnSpeed" aria-label="Playback speed"><svg><use href="#i-speed"></use></svg><span class="lbl" id="lblSpeed">1x</span></button>
+        <button class="chip" id="btnAudio" aria-label="Audio track"><svg><use href="#i-audio"></use></svg><span class="lbl" id="lblAudio">Audio</span></button>
+        <button class="chip" id="btnQuality" aria-label="Video quality"><svg><use href="#i-quality"></use></svg><span class="lbl" id="lblQuality">Auto</span></button>
+        <button class="ib" id="btnFs" aria-label="Enter fullscreen"><svg id="fsIcon"><use href="#i-fs"></use></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOCK -->
+  <div id="lock">
+    <button id="unlockBtn" aria-label="Unlock screen"><svg><use href="#i-unlock"></use></svg></button>
+  </div>
+
+  <div id="lockFlash"><svg><use href="#i-lock"></use></svg><span id="lockFlashText">Locked</span></div>
+
+  <!-- SHEET -->
+  <div id="sheet" role="dialog" aria-modal="true">
+    <div id="sheetBack"></div>
+    <div class="panel">
+      <div class="grip"></div>
+      <div class="shead">
+        <h2 id="sheetTitle">Settings</h2>
+        <button class="ib sm" id="sheetClose" aria-label="Close"><svg><use href="#i-close"></use></svg></button>
+      </div>
+      <p class="snote" id="sheetNote" hidden></p>
+      <div class="sbody" id="sheetBody"></div>
+    </div>
+  </div>
+
+  <!-- NOTICE -->
+  <div id="notice">
+    <div class="in">
+      <h3 id="noticeTitle">Unable to play this video</h3>
+      <p id="noticeText">Check your connection or try again.</p>
+      <button id="noticeBtn">Try again</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+
+<script>
+"use strict";
+/* ============================================================================
+ * SINGLE-FILE WEBVIEW PLAYER
+ * Vanilla JS. No dependencies. Deploy as index.html on Firebase Hosting.
+ * ==========================================================================*/
+
+/* ============================================================================
+ * 1. CONFIG — the only block you normally edit
+ * ==========================================================================*/
+const CONFIG = {
+  title:    "Vishwanath and Sons",
+  subtitle: "1080p",
+
+  /* --------------------------------------------------------------------------
+   * SOURCE MAP — one entry per genuinely encoded file.
+   * Leave a quality as "" when no separate file exists for it. The player reads
+   * this map at boot and only enables what is really there; empty entries are
+   * shown as "Not available" rather than silently falling back.
+   *
+   * To add real quality switching later, encode the extra renditions, upload
+   * them to R2, and paste the URLs below. Nothing else needs to change.
+   * ------------------------------------------------------------------------*/
+  sources: {
+    "1080p": "https://pub-88f8f454da2f497d9de8f204ed5ea900.r2.dev/Vishwanath-and-Sons_1080p.mp4",
+    "720p":  "",
+    "480p":  "",
+    "360p":  ""
+  },
+
+  /* --------------------------------------------------------------------------
+   * OPTIONAL KNOWN FILE SIZES, in megabytes, per quality.
+   * Only fill these in with the real size of the real file. When a value is
+   * missing the player measures it over the network (see measureFileSize) and,
+   * failing that, says plainly that usage depends on the stream — it never
+   * invents a number from a "compression factor".
+   * ------------------------------------------------------------------------*/
+  sizesMB: { "1080p": null, "720p": null, "480p": null, "360p": null },
+
+  /* Try a HEAD request to read Content-Length for an honest size figure.
+     Silently skipped if the bucket does not allow cross-origin HEAD. */
+  measureFileSize: true,
+
+  defaultQuality: "auto",     // "auto" resolves to the best available source
+
+  /* ---- Seeking ---------------------------------------------------------- */
+  seekStep: 10,               // double-tap and button skip, seconds
+  seekMax: 180,               // hard cap for one swipe, seconds
+  swipeRefFrac: 0.25,         // fraction of screen width that means "normal"
+  swipeCurve: 0.62,           // <1 = generous on small swipes, gentle on long
+  velocityBoostMax: 0.6,      // up to +60% on a fast flick
+
+  /* ---- Gestures --------------------------------------------------------- */
+  deadzone: 14,               // px before an axis is chosen
+  verticalTravel: 0.62,       // fraction of height for a full 0-100% sweep
+  edgeGuard: 0.055,           // ignore touches starting in the outer 5.5%
+  doubleTapMs: 270,
+
+  /* ---- Brightness ------------------------------------------------------- */
+  maxDim: 0.80,               // overlay opacity at 0% brightness
+
+  /* ---- Behaviour -------------------------------------------------------- */
+  controlsTimeout: 3200,
+  spinnerDelay: 380,          // wait this long before admitting we're buffering
+  autoplay: false,
+  rememberPosition: true,
+  minResumeSec: 15,           // don't bother resuming the first few seconds
+  endGuardSec: 12             // don't resume right at the end
+};
+
+const QUALITY_ORDER = ["1080p", "720p", "480p", "360p"];
+const SPEED_PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const SPEED_MIN = 0.5, SPEED_MAX = 2;
+
+
+/* ============================================================================
+ * 2. TINY UTILITIES
+ * ==========================================================================*/
+const $ = id => document.getElementById(id);
+const clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
+const isNum = v => typeof v === "number" && isFinite(v);
+
+function fmtTime(sec){
+  if (!isNum(sec) || sec < 0) sec = 0;
+  sec = Math.floor(sec);
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  const p = n => String(n).padStart(2, "0");
+  return h > 0 ? h + ":" + p(m) + ":" + p(s) : p(m) + ":" + p(s);
+}
+
+function fmtData(mb){
+  if (!isNum(mb) || mb <= 0) return null;
+  return mb >= 1024 ? (mb / 1024 >= 10 ? (mb/1024).toFixed(1) : (mb/1024).toFixed(2)) + " GB"
+                    : Math.round(mb) + " MB";
+}
+
+function fmtSpeed(r){
+  const preset = SPEED_PRESETS.find(p => Math.abs(p - r) < 0.005);
+  if (preset !== undefined) return (preset === 1 ? "1" : String(preset)) + "x";
+  return r.toFixed(2) + "x";
+}
+
+/* ---- Centralised timers: one name, one timer, no orphans ----------------- */
+const Timers = {
+  map: new Map(),
+  set(name, fn, ms){
+    this.clear(name);
+    this.map.set(name, setTimeout(() => { this.map.delete(name); fn(); }, ms));
+  },
+  clear(name){
+    const t = this.map.get(name);
+    if (t !== undefined){ clearTimeout(t); this.map.delete(name); }
+  },
+  has(name){ return this.map.has(name); },
+  clearAll(){ this.map.forEach(clearTimeout); this.map.clear(); }
+};
+
+/* ---- Storage that never throws (private mode, disabled storage, quota) --- */
+const Store = {
+  ok: (() => {
+    try { const k = "__vp"; localStorage.setItem(k, "1"); localStorage.removeItem(k); return true; }
+    catch(e){ return false; }
+  })(),
+  get(key, fallback){
+    if (!this.ok) return fallback;
+    try { const v = localStorage.getItem("vp:" + key); return v === null ? fallback : JSON.parse(v); }
+    catch(e){ return fallback; }
+  },
+  set(key, value){
+    if (!this.ok) return;
+    try { localStorage.setItem("vp:" + key, JSON.stringify(value)); } catch(e){}
+  }
+};
+
+/* A stable per-video key so positions don't leak between films */
+function videoKey(url){
+  let h = 0;
+  for (let i = 0; i < url.length; i++){ h = ((h << 5) - h + url.charCodeAt(i)) | 0; }
+  return "pos:" + (h >>> 0).toString(36);
+}
+
+
+/* ============================================================================
+ * 3. ELEMENTS
+ * ==========================================================================*/
+const video = $("video"), stage = $("stage"), dimmer = $("dimmer"),
+      gestures = $("gestures"), controls = $("controls"), spinner = $("spinner");
+
+const hudSeek = $("hudSeek"), hudSeekIcon = $("hudSeekIcon"), hudSeekNum = $("hudSeekNum"),
+      hudSeekTime = $("hudSeekTime"), hudLevel = $("hudLevel"), hudLevelIcon = $("hudLevelIcon"),
+      hudLevelLabel = $("hudLevelLabel"), hudLevelValue = $("hudLevelValue"), hudLevelFill = $("hudLevelFill");
+
+const timeline = $("timeline"), tlBuf = $("tlBuf"), tlProg = $("tlProg"),
+      tlThumb = $("tlThumb"), tlPreview = $("tlPreview");
+
+const tCur = $("tCur"), tDur = $("tDur"), playIcon = $("playIcon"), fsIcon = $("fsIcon");
+const lockLayer = $("lock"), unlockBtn = $("unlockBtn"), lockFlash = $("lockFlash");
+const sheet = $("sheet"), sheetTitle = $("sheetTitle"), sheetNote = $("sheetNote"), sheetBody = $("sheetBody");
+const notice = $("notice"), toastEl = $("toast");
+const rippleL = $("rippleL"), rippleR = $("rippleR");
+
+
+/* ============================================================================
+ * 4. STATE — single source of truth
+ * ==========================================================================*/
+const state = {
+  locked:      false,
+  sheetOpen:   false,
+  noticeOpen:  false,
+  scrubbing:   false,
+  controlsOn:  true,
+  switching:   false,   // a quality change is in flight
+  switchToken: 0,       // only the newest switch is allowed to finish
+  quality:     CONFIG.defaultQuality,   // "auto" | "1080p" | ...
+  activeSrc:   "",      // the URL actually loaded
+  speed:       1,
+  volume:      1,
+  muted:       false,
+  brightness:  1,
+  gesture:     null,    // null | "x" | "y"
+  lastTapAt:   0,
+  lastTapX:    0,
+  resumeAt:    0,
+  ended:       false
+};
+
+
+/* ============================================================================
+ * 5. QUALITY MODEL — honest by construction
+ * --------------------------------------------------------------------------
+ * A quality is "available" only when CONFIG.sources holds a real http(s) URL
+ * for it. Everything the UI says is derived from that fact. There is no
+ * client-side downscaling anywhere in this file, and none is implied.
+ * ==========================================================================*/
+function isUsableUrl(u){
+  return typeof u === "string" && /^https?:\/\/\S+/i.test(u.trim());
+}
+
+function availableQualities(){
+  return QUALITY_ORDER.filter(q => isUsableUrl(CONFIG.sources[q]));
+}
+
+/* "auto" means: the best rendition that actually exists. */
+function resolveQualityKey(key){
+  if (key === "auto"){
+    const a = availableQualities();
+    return a.length ? a[0] : null;
+  }
+  return isUsableUrl(CONFIG.sources[key]) ? key : null;
+}
+
+function resolveSrc(key){
+  const real = resolveQualityKey(key);
+  return real ? CONFIG.sources[real].trim() : "";
+}
+
+function qualityButtonLabel(){
+  if (state.quality === "auto"){
+    const real = resolveQualityKey("auto");
+    return real ? "Auto" : "Auto";
+  }
+  return state.quality;
+}
+
+/* ---- Data usage: measured or honest silence ------------------------------ */
+const measuredMB = Object.create(null);
+
+function knownSizeMB(qualityKey){
+  const real = resolveQualityKey(qualityKey);
+  if (!real) return null;
+  if (isNum(CONFIG.sizesMB[real]) && CONFIG.sizesMB[real] > 0) return CONFIG.sizesMB[real];
+  if (isNum(measuredMB[real])) return measuredMB[real];
+  return null;
+}
+
+function dataLine(qualityKey){
+  const real = resolveQualityKey(qualityKey);
+  if (!real) return "Not available — no source configured";
+
+  const size = knownSizeMB(qualityKey);
+  if (size === null){
+    return "Data usage depends on the video stream and your network";
+  }
+  const total = fmtData(size);
+  const dur = video.duration;
+  if (isNum(dur) && dur > 0 && video.currentSrc && real === activeQualityKey()){
+    const left = size * (1 - clamp(video.currentTime / dur, 0, 1));
+    const leftTxt = fmtData(left);
+    if (leftTxt && left < size * 0.98) return "File is " + total + " · about " + leftTxt + " left from here";
+  }
+  return "File is " + total;
+}
+
+/* Which physical rendition is on screen right now */
+function activeQualityKey(){
+  for (const q of QUALITY_ORDER){
+    const u = CONFIG.sources[q];
+    if (isUsableUrl(u) && sameUrl(u.trim(), state.activeSrc)) return q;
+  }
+  return null;
+}
+
+function sameUrl(a, b){
+  if (!a || !b) return false;
+  try { return new URL(a, location.href).href === new URL(b, location.href).href; }
+  catch(e){ return a === b; }
+}
+
+/* Measure the real file size over the network. Best effort, never blocking. */
+function measureSize(qualityKey){
+  if (!CONFIG.measureFileSize) return;
+  const real = resolveQualityKey(qualityKey);
+  if (!real || knownSizeMB(real) !== null) return;
+  if (typeof fetch !== "function" || typeof AbortController !== "function") return;
+
+  const ctrl = new AbortController();
+  const bail = setTimeout(() => ctrl.abort(), 5000);
+
+  fetch(CONFIG.sources[real].trim(), { method: "HEAD", signal: ctrl.signal })
+    .then(res => {
+      clearTimeout(bail);
+      const len = parseInt(res.headers.get("content-length") || "", 10);
+      if (isNum(len) && len > 0){
+        measuredMB[real] = len / (1024 * 1024);
+        if (state.sheetOpen && sheet.dataset.kind === "quality") renderQualitySheet();
+      }
+    })
+    .catch(() => { clearTimeout(bail); /* CORS or offline — stay quiet */ });
+}
+
+
+/* ============================================================================
+ * 6. SOURCE LOADING & RACE-SAFE QUALITY SWITCHING
+ * ==========================================================================*/
+function loadInitial(){
+  const src = resolveSrc(state.quality);
+  if (!src){
+    showNotice("No video source configured",
+               "Open index.html and add your video URL to CONFIG.sources.");
+    return;
+  }
+
+  /* Restore remembered position for this specific file */
+  if (CONFIG.rememberPosition){
+    const saved = Store.get(videoKey(src), 0);
+    if (isNum(saved) && saved > CONFIG.minResumeSec) state.resumeAt = saved;
+  }
+
+  applySource(src, {
+    time: state.resumeAt,
+    play: CONFIG.autoplay,
+    onReady(){ measureSize(state.quality); }
+  });
+}
+
+let pendingCleanup = null;
+
+/* The one place that ever touches video.src */
+function applySource(url, opts){
+  opts = opts || {};
+  if (pendingCleanup){ pendingCleanup(); pendingCleanup = null; }   // no orphans
+  const token = ++state.switchToken;
+  const previous = {
+    src: state.activeSrc,
+    quality: state.quality,
+    time: isNum(opts.time) ? opts.time : 0,
+    play: !!opts.play
+  };
+
+  state.switching = true;
+  state.activeSrc = url;
+  showSpinner(true);
+
+  function cleanup(){
+    video.removeEventListener("loadedmetadata", onMeta);
+    video.removeEventListener("error", onErr);
+    if (pendingCleanup === cleanup) pendingCleanup = null;
+  }
+
+  function onMeta(){
+    if (token !== state.switchToken) return cleanup();   // a newer switch won
+    cleanup();
+    state.switching = false;
+    showSpinner(false);
+
+    const dur = video.duration;
+    let t = isNum(opts.time) ? opts.time : 0;
+    if (isNum(dur) && dur > 0) t = clamp(t, 0, Math.max(0, dur - 0.25));
+    if (t > 0.5){ try { video.currentTime = t; } catch(e){} }
+
+    /* Playback rate survives every reload — video.load() resets it to 1 */
+    applySpeed(state.speed, true);
+    video.volume = state.volume;
+    video.muted = state.muted;
+
+    tDur.textContent = fmtTime(dur);
+    timeline.setAttribute("aria-valuemax", isNum(dur) ? Math.floor(dur) : 0);
+    hideNotice();
+    refreshAudioChip();
+    paint();
+
+    if (opts.play) safePlay();
+    if (typeof opts.onReady === "function") opts.onReady();
+  }
+
+  function onErr(){
+    if (token !== state.switchToken) return cleanup();
+    cleanup();
+    state.switching = false;
+    showSpinner(false);
+
+    /* Roll back to the source that was already working */
+    if (previous.src && !sameUrl(previous.src, url)){
+      state.quality = previous.quality;
+      syncQualityChip();
+      toast("That quality failed. Staying on the previous one.");
+      applySource(previous.src, { time: previous.time, play: previous.play });
+    } else {
+      reportMediaError();
+    }
+  }
+
+  pendingCleanup = cleanup;
+  video.addEventListener("loadedmetadata", onMeta);
+  video.addEventListener("error", onErr);
+
+  video.src = url;
+  try { video.load(); } catch(e){}
+  syncQualityChip();
+}
+
+/* User picked a quality from the sheet */
+function selectQuality(key){
+  const target = resolveSrc(key);
+  if (!target){ toast("That quality isn't available."); return; }
+
+  const sourceChanged = !sameUrl(target, state.activeSrc);
+  state.quality = key;
+  Store.set("quality", key);
+  syncQualityChip();
+
+  if (!sourceChanged){
+    /* Honest: the label changed, the stream did not. Say nothing misleading. */
+    const real = resolveQualityKey(key);
+    if (key === "auto") toast("Auto · playing " + (real || "source"));
+    return;
+  }
+
+  applySource(target, {
+    time: video.currentTime,
+    play: !video.paused && !video.ended,
+    onReady(){
+      measureSize(key);
+      toast("Now playing " + (resolveQualityKey(key) || key));
+    }
+  });
+}
+
+function syncQualityChip(){
+  $("lblQuality").textContent = qualityButtonLabel();
+}
+
+
+/* ============================================================================
+ * 7. PLAYBACK
+ * ==========================================================================*/
+function safePlay(){
+  const p = video.play();
+  if (p && typeof p.catch === "function"){
+    p.catch(err => {
+      /* WebView blocks unmuted autoplay until a real gesture. In your Activity:
+         webView.settings.mediaPlaybackRequiresUserGesture = false          */
+      if (err && err.name === "NotAllowedError") showControls(true);
+      console.warn("play() rejected:", err && err.name);
+    });
+  }
+}
+
+function togglePlay(){
+  if (video.paused || video.ended) safePlay();
+  else video.pause();
+}
+
+function seekBy(seconds){
+  const dur = video.duration;
+  if (!isNum(dur) || dur <= 0) return;
+  video.currentTime = clamp(video.currentTime + seconds, 0, dur - 0.05);
+}
+
+function syncPlayIcon(){
+  const href = video.ended ? "#i-replay" : (video.paused ? "#i-play" : "#i-pause");
+  playIcon.firstElementChild.setAttribute("href", href);
+  $("btnPlay").setAttribute("aria-label", video.paused ? "Play" : "Pause");
+}
+
+/* Speed is applied through here only, so state and UI can never disagree */
+function applySpeed(rate, silent){
+  const wanted = clamp(Number(rate) || 1, SPEED_MIN, SPEED_MAX);
+  try { video.playbackRate = wanted; } catch(e){}
+  /* Some WebViews clamp or ignore odd rates — trust the element, not the ask */
+  const actual = isNum(video.playbackRate) ? video.playbackRate : 1;
+  state.speed = actual;
+  $("lblSpeed").textContent = fmtSpeed(actual);
+  Store.set("speed", actual);
+  if (!silent && Math.abs(actual - wanted) > 0.02){
+    toast("This device kept playback at " + fmtSpeed(actual));
+  }
+}
+
+
+/* ============================================================================
+ * 8. TIMELINE
+ * --------------------------------------------------------------------------
+ * scaleX() instead of width keeps every frame on the compositor. Painting is
+ * event-driven and rAF-coalesced — there is no idle animation loop.
+ * ==========================================================================*/
+let paintQueued = false;
+
+function paint(){
+  paintQueued = false;
+  const dur = video.duration;
+  if (!isNum(dur) || dur <= 0) return;
+
+  if (!state.scrubbing){
+    const p = clamp(video.currentTime / dur, 0, 1);
+    tlProg.style.transform = "scaleX(" + p + ")";
+    tlThumb.style.left = (p * 100) + "%";
+    tCur.textContent = fmtTime(video.currentTime);
+    timeline.setAttribute("aria-valuenow", Math.floor(video.currentTime));
+  }
+
+  /* Buffered: walk every range, not just the first */
+  let end = 0;
+  try{
+    const b = video.buffered, t = video.currentTime;
+    for (let i = 0; i < b.length; i++){
+      if (b.start(i) <= t + 0.25 && b.end(i) > end) end = b.end(i);
+    }
+    if (!end && b.length) end = b.end(b.length - 1);
+  }catch(e){}
+  tlBuf.style.transform = "scaleX(" + clamp(end / dur, 0, 1) + ")";
+}
+
+function queuePaint(){
+  if (!paintQueued){ paintQueued = true; requestAnimationFrame(paint); }
+}
+
+function ratioAt(clientX){
+  const r = timeline.getBoundingClientRect();
+  if (r.width <= 0) return 0;
+  return clamp((clientX - r.left) / r.width, 0, 1);
+}
+
+function drawScrub(ratio){
+  tlProg.style.transform = "scaleX(" + ratio + ")";
+  tlThumb.style.left = (ratio * 100) + "%";
+  const t = ratio * (video.duration || 0);
+  tCur.textContent = fmtTime(t);
+  tlPreview.textContent = fmtTime(t);
+  /* Keep the bubble inside the bar at both ends */
+  tlPreview.style.left = clamp(ratio * 100, 8, 92) + "%";
+}
+
+let scrubRatio = 0, scrubQueued = false;
+
+timeline.addEventListener("pointerdown", e => {
+  if (state.locked || !isNum(video.duration) || video.duration <= 0) return;
+  state.scrubbing = true;
+  timeline.classList.add("scrub");
+  try { timeline.setPointerCapture(e.pointerId); } catch(err){}
+  scrubRatio = ratioAt(e.clientX);
+  drawScrub(scrubRatio);
+  Timers.clear("hideControls");
+});
+
+timeline.addEventListener("pointermove", e => {
+  if (!state.scrubbing) return;
+  scrubRatio = ratioAt(e.clientX);
+  if (!scrubQueued){
+    scrubQueued = true;
+    requestAnimationFrame(() => { scrubQueued = false; drawScrub(scrubRatio); });
+  }
+});
+
+function endScrub(){
+  if (!state.scrubbing) return;
+  state.scrubbing = false;
+  timeline.classList.remove("scrub");
+  const dur = video.duration;
+  if (isNum(dur) && dur > 0){
+    /* One seek on release. Forty seeks during a drag is what makes browser
+       players feel broken on mid-range Android. */
+    try { video.currentTime = clamp(scrubRatio * dur, 0, dur - 0.05); } catch(e){}
+  }
+  scheduleHide();
+}
+timeline.addEventListener("pointerup", endScrub);
+timeline.addEventListener("pointercancel", endScrub);
+timeline.addEventListener("lostpointercapture", endScrub);
+
+
+/* ============================================================================
+ * 9. CONTROLS VISIBILITY
+ * ==========================================================================*/
+function showControls(sticky){
+  if (state.locked) return;
+  state.controlsOn = true;
+  controls.classList.add("on");
+  Timers.clear("hideControls");
+  if (!sticky) scheduleHide();
+}
+
+function hideControls(){
+  if (state.scrubbing || state.sheetOpen || state.noticeOpen) return;
+  state.controlsOn = false;
+  controls.classList.remove("on");
+}
+
+function scheduleHide(){
+  Timers.clear("hideControls");
+  if (video.paused || state.sheetOpen || state.scrubbing || state.noticeOpen) return;
+  Timers.set("hideControls", hideControls, CONFIG.controlsTimeout);
+}
+
+function toggleControls(){
+  state.controlsOn ? hideControls() : showControls();
+}
+
+
+/* ============================================================================
+ * 10. GESTURES
+ * --------------------------------------------------------------------------
+ * Axis is chosen once, past the deadzone, and never changes mid-gesture.
+ *   horizontal  -> dynamic seek, committed on release
+ *   vertical L  -> brightness      vertical R -> volume
+ *   tap         -> controls        double tap -> ±10s / play-pause
+ * The whole engine is disabled while locked, scrubbing, or a sheet is open.
+ * ==========================================================================*/
+const G = {
+  live:false, id:null, x0:0, y0:0, t0:0, axis:null, zone:null,
+  base:0, startTime:0, delta:0, target:0, moved:false
+};
+
+function gesturesAllowed(){
+  return !state.locked && !state.scrubbing && !state.sheetOpen && !state.noticeOpen;
+}
+
+/* --- Dynamic seek curve ---------------------------------------------------
+ * Distance drives the magnitude; a fast flick adds a bounded bonus.
+ * ~8% of the width ≈ 5s · ~25% ≈ 10s · ~50% ≈ 15s · full sweep ≈ 21s,
+ * scaled up by velocity, then capped at CONFIG.seekMax. A stray 20px nudge
+ * can never produce a minute-long jump.
+ * ------------------------------------------------------------------------*/
+function seekFromSwipe(dx, elapsedMs){
+  const w = Math.max(1, window.innerWidth);
+  const frac = Math.abs(dx) / w;
+  if (frac < 0.012) return 0;
+
+  const ratio = frac / CONFIG.swipeRefFrac;
+  let secs = CONFIG.seekStep * Math.pow(ratio, CONFIG.swipeCurve);
+
+  const vel = Math.abs(dx) / Math.max(16, elapsedMs);           // px per ms
+  const boost = 1 + clamp((vel - 0.5) / 2.5, 0, 1) * CONFIG.velocityBoostMax;
+  secs *= boost;
+
+  secs = Math.min(secs, CONFIG.seekMax);
+  return Math.round(secs) * (dx < 0 ? -1 : 1);
+}
+
+gestures.addEventListener("touchstart", e => {
+  if (!gesturesAllowed() || e.touches.length > 1){ G.live = false; return; }
+
+  const t = e.touches[0], w = window.innerWidth;
+  /* Skip Android's edge back-gesture strip */
+  if (t.clientX < w * CONFIG.edgeGuard || t.clientX > w * (1 - CONFIG.edgeGuard)){
+    G.live = false; return;
+  }
+
+  G.live = true; G.id = t.identifier;
+  G.x0 = t.clientX; G.y0 = t.clientY; G.t0 = Date.now();
+  G.axis = null; G.moved = false; G.delta = 0;
+  G.startTime = video.currentTime;
+  G.zone = t.clientX < w / 2 ? "brightness" : "volume";
+}, { passive:true });
+
+gestures.addEventListener("touchmove", e => {
+  if (!G.live) return;
+  const t = e.touches[0];
+  if (!t || t.identifier !== G.id) return;
+
+  const dx = t.clientX - G.x0, dy = t.clientY - G.y0;
+
+  if (!G.axis){
+    if (Math.abs(dx) < CONFIG.deadzone && Math.abs(dy) < CONFIG.deadzone) return;
+    /* Require a clear winner so a diagonal drift doesn't flip modes */
+    G.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    G.moved = true;
+    G.base = G.zone === "volume" ? state.volume : state.brightness;
+    state.gesture = G.axis;
+    hideControls();
+  }
+
+  /* Only now do we own the touch — preventDefault after the axis is known
+     keeps short taps and edge swipes behaving natively. */
+  if (e.cancelable) e.preventDefault();
+
+  if (G.axis === "x"){
+    const dur = video.duration;
+    if (!isNum(dur) || dur <= 0) return;
+    const d = seekFromSwipe(dx, Date.now() - G.t0);
+    if (d !== G.delta){
+      G.delta = d;
+      G.target = clamp(G.startTime + d, 0, dur - 0.05);
+      showSeekHud(d, G.target);
+    }
+  } else {
+    const span = window.innerHeight * CONFIG.verticalTravel;
+    const v = clamp(G.base - (dy / span), 0, 1);
+    if (G.zone === "volume") setVolume(v, true); else setBrightness(v, true);
+  }
+}, { passive:false });
+
+function endGesture(e){
+  if (!G.live) return;
+  G.live = false;
+  state.gesture = null;
+
+  if (G.axis === "x"){
+    if (G.delta !== 0 && isNum(video.duration)){
+      try { video.currentTime = G.target; } catch(err){}
+    }
+    fadeHud(420);                     // always fade, even on a net-zero swipe
+  } else if (G.axis === "y"){
+    fadeHud(520);
+  } else if (!G.moved && e && e.changedTouches && e.changedTouches.length){
+    handleTap(e.changedTouches[0]);
+  }
+  G.axis = null;
+}
+gestures.addEventListener("touchend", endGesture, { passive:true });
+gestures.addEventListener("touchcancel", () => { G.live = false; G.axis = null; state.gesture = null; }, { passive:true });
+
+/* Desktop click fallback. Touch devices emit a synthetic click after
+   touchend, which would double-toggle the controls — so once we have seen a
+   real touch, the mouse path is retired for good. */
+let sawTouch = false;
+gestures.addEventListener("touchstart", () => { sawTouch = true; }, { passive:true, capture:true });
+gestures.addEventListener("click", () => {
+  if (sawTouch || !gesturesAllowed()) return;
+  toggleControls();
+});
+
+function handleTap(touch){
+  const x = touch.clientX, w = window.innerWidth, now = Date.now();
+  const isDouble = (now - state.lastTapAt) < CONFIG.doubleTapMs &&
+                   Math.abs(x - state.lastTapX) < 70;
+
+  if (isDouble){
+    Timers.clear("singleTap");
+    state.lastTapAt = 0;
+    if (x < w * 0.35){ seekBy(-CONFIG.seekStep); flashRipple(rippleL); showSeekHud(-CONFIG.seekStep, video.currentTime); fadeHud(520); }
+    else if (x > w * 0.65){ seekBy(CONFIG.seekStep); flashRipple(rippleR); showSeekHud(CONFIG.seekStep, video.currentTime); fadeHud(520); }
+    else togglePlay();
+    return;
+  }
+
+  state.lastTapAt = now;
+  state.lastTapX = x;
+  Timers.set("singleTap", toggleControls, CONFIG.doubleTapMs);
+}
+
+function flashRipple(el){
+  el.classList.remove("go");
+  void el.offsetWidth;           // restart the animation
+  el.classList.add("go");
+}
+
+
+/* ============================================================================
+ * 11. VOLUME / BRIGHTNESS
+ * ==========================================================================*/
+function setVolume(v, withHud){
+  state.volume = clamp(v, 0, 1);
+  state.muted = state.volume === 0;
+  video.volume = state.volume;
+  video.muted = state.muted;
+  Store.set("volume", state.volume);
+  if (withHud) showLevelHud(state.muted ? "#i-mute" : "#i-vol", "Volume", state.volume);
+}
+
+function setBrightness(b, withHud){
+  state.brightness = clamp(b, 0, 1);
+  dimmer.style.opacity = ((1 - state.brightness) * CONFIG.maxDim).toFixed(3);
+  Store.set("brightness", state.brightness);
+
+  /* Real device brightness, when the host app exposes it:
+       class Bridge(private val a: Activity) {
+         @JavascriptInterface fun setBrightness(v: Float) {
+           a.runOnUiThread {
+             val lp = a.window.attributes
+             lp.screenBrightness = v.coerceIn(0.01f, 1f)
+             a.window.attributes = lp
+           }
+         }
+         @JavascriptInterface fun close() { a.finish() }
+       }
+       webView.addJavascriptInterface(Bridge(this), "AndroidBridge")          */
+  if (window.AndroidBridge && typeof window.AndroidBridge.setBrightness === "function"){
+    try { window.AndroidBridge.setBrightness(state.brightness); } catch(e){}
+  }
+  if (withHud) showLevelHud("#i-bright", "Brightness", state.brightness);
+}
+
+
+/* ============================================================================
+ * 12. HUDs + TOAST  (one instance each, one timer each)
+ * ==========================================================================*/
+function showSeekHud(delta, target){
+  hudLevel.classList.remove("on");
+  hudSeekIcon.firstElementChild.setAttribute("href", delta < 0 ? "#i-rew" : "#i-ff");
+  hudSeekNum.textContent = (delta >= 0 ? "+" : "\u2212") + Math.abs(Math.round(delta)) + "s";
+  hudSeekTime.textContent = fmtTime(target) + " / " + fmtTime(video.duration || 0);
+  hudSeek.classList.add("on");
+  Timers.clear("hud");
+}
+
+function showLevelHud(iconId, label, value){
+  hudSeek.classList.remove("on");
+  hudLevelIcon.firstElementChild.setAttribute("href", iconId);
+  hudLevelLabel.textContent = label;
+  hudLevelValue.textContent = Math.round(value * 100) + "%";
+  hudLevelFill.style.transform = "scaleX(" + value + ")";
+  hudLevel.classList.add("on");
+  Timers.clear("hud");
+}
+
+function fadeHud(ms){
+  Timers.set("hud", () => {
+    hudSeek.classList.remove("on");
+    hudLevel.classList.remove("on");
+  }, ms);
+}
+
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add("on");
+  Timers.set("toast", () => toastEl.classList.remove("on"), 1700);
+}
+
+
+/* ============================================================================
+ * 13. SPINNER — only when buffering genuinely lasts
+ * ==========================================================================*/
+function showSpinner(on){
+  if (on){
+    if (!Timers.has("spinner") && !spinner.classList.contains("on")){
+      Timers.set("spinner", () => spinner.classList.add("on"), CONFIG.spinnerDelay);
+    }
+  } else {
+    Timers.clear("spinner");
+    spinner.classList.remove("on");
+  }
+}
+
+
+/* ============================================================================
+ * 14. LOCK MODE — video and almost nothing else
+ * ==========================================================================*/
+function lockScreen(){
+  if (state.locked) return;
+  state.locked = true;
+
+  closeSheet(true);
+  Timers.clear("hideControls");
+  Timers.clear("singleTap");
+  state.controlsOn = false;
+  controls.classList.remove("on");
+  hudSeek.classList.remove("on");
+  hudLevel.classList.remove("on");
+  toastEl.classList.remove("on");
+  Timers.clear("toast");
+
+  lockLayer.classList.add("on");
+  unlockBtn.classList.remove("on");
+  Timers.clear("unlockHide");
+
+  flashLock("Locked", "#i-lock");
+}
+
+function unlockScreen(){
+  if (!state.locked) return;
+  state.locked = false;
+
+  lockLayer.classList.remove("on");
+  unlockBtn.classList.remove("on");
+  Timers.clear("unlockHide");
+  Timers.clear("lockFlash");
+  lockFlash.classList.remove("go");
+
+  flashLock("Unlocked", "#i-unlock");
+  showControls();
+}
+
+/* The subtle 1.25s indicator. One element, one animation, no leftovers. */
+function flashLock(text, icon){
+  $("lockFlashText").textContent = text;
+  lockFlash.firstElementChild.setAttribute("href", icon);
+  lockFlash.classList.remove("go");
+  void lockFlash.offsetWidth;
+  lockFlash.classList.add("go");
+  Timers.set("lockFlash", () => lockFlash.classList.remove("go"), 1400);
+}
+
+function revealUnlock(){
+  unlockBtn.classList.add("on");
+  Timers.set("unlockHide", () => unlockBtn.classList.remove("on"), 2600);
+}
+
+/* The lock layer absorbs everything. Taps reveal the key; nothing else fires. */
+lockLayer.addEventListener("touchstart", e => {
+  if (unlockBtn.contains(e.target)) return;
+  if (e.cancelable) e.preventDefault();
+  revealUnlock();
+}, { passive:false });
+
+lockLayer.addEventListener("touchmove", e => { if (e.cancelable) e.preventDefault(); }, { passive:false });
+lockLayer.addEventListener("click", e => { if (!unlockBtn.contains(e.target)) revealUnlock(); });
+
+unlockBtn.addEventListener("click", e => { e.stopPropagation(); unlockScreen(); });
+
+
+/* ============================================================================
+ * 15. FULLSCREEN + ORIENTATION
+ * ==========================================================================*/
+function fsElement(){
+  return document.fullscreenElement || document.webkitFullscreenElement || null;
+}
+
+function enterFullscreen(){
+  const el = stage;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req){ toast("Fullscreen isn't supported here."); return; }
+
+  let p;
+  try { p = req.call(el, { navigationUI:"hide" }); } catch(e){ try { p = req.call(el); } catch(e2){ p = null; } }
+  Promise.resolve(p)
+    .then(lockLandscape)
+    .catch(err => { console.warn("fullscreen:", err && err.name); lockLandscape(); })
+    .then(syncFsIcon, syncFsIcon);
+}
+
+function lockLandscape(){
+  /* Feature-detected and failure-tolerant: many WebViews reject this. */
+  try{
+    if (screen.orientation && typeof screen.orientation.lock === "function"){
+      return Promise.resolve(screen.orientation.lock("landscape")).catch(() => {});
+    }
+  }catch(e){}
+  return Promise.resolve();
+}
+
+function exitFullscreen(){
+  try{
+    if (screen.orientation && typeof screen.orientation.unlock === "function") screen.orientation.unlock();
+  }catch(e){}
+  const ex = document.exitFullscreen || document.webkitExitFullscreen;
+  if (!ex) return;
+  try { Promise.resolve(ex.call(document)).catch(() => {}); } catch(e){}
+}
+
+function toggleFullscreen(){ fsElement() ? exitFullscreen() : enterFullscreen(); }
+
+function syncFsIcon(){
+  const on = !!fsElement();
+  fsIcon.firstElementChild.setAttribute("href", on ? "#i-fsx" : "#i-fs");
+  $("btnFs").setAttribute("aria-label", on ? "Exit fullscreen" : "Enter fullscreen");
+}
+
+document.addEventListener("fullscreenchange", syncFsIcon);
+document.addEventListener("webkitfullscreenchange", syncFsIcon);
+
+
+/* ============================================================================
+ * 16. BOTTOM SHEET
+ * ==========================================================================*/
+function openSheet(kind, title, note, build){
+  sheet.dataset.kind = kind;
+  sheetTitle.textContent = title;
+  if (note){ sheetNote.textContent = note; sheetNote.hidden = false; }
+  else sheetNote.hidden = true;
+
+  sheetBody.innerHTML = "";
+  build(sheetBody);
+
+  state.sheetOpen = true;
+  sheet.classList.add("on");
+  Timers.clear("hideControls");
+  showControls(true);
+}
+
+function closeSheet(silent){
+  if (!state.sheetOpen) return;
+  state.sheetOpen = false;
+  sheet.classList.remove("on");
+  sheetBody.innerHTML = "";
+  delete sheet.dataset.kind;
+  if (!silent) scheduleHide();
+}
+
+function optionRow(opts){
+  const btn = document.createElement("button");
+  btn.className = "opt" + (opts.selected ? " sel" : "") + (opts.disabled ? " off" : "");
+  if (opts.disabled) btn.setAttribute("aria-disabled", "true");
+
+  const wrap = document.createElement("div");
+  wrap.className = "opt-t";
+  const l = document.createElement("div");
+  l.className = "opt-l"; l.textContent = opts.label;
+  wrap.appendChild(l);
+  if (opts.meta){
+    const m = document.createElement("div");
+    m.className = "opt-m"; m.textContent = opts.meta;
+    wrap.appendChild(m);
+  }
+
+  const tick = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  tick.setAttribute("class", "opt-tick");
+  tick.setAttribute("viewBox", "0 0 24 24");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", "#i-tick");
+  tick.appendChild(use);
+
+  btn.appendChild(wrap);
+  btn.appendChild(tick);
+  if (!opts.disabled && opts.onPick) btn.addEventListener("click", opts.onPick);
+  return btn;
+}
+
+$("sheetClose").addEventListener("click", () => closeSheet());
+$("sheetBack").addEventListener("click", () => closeSheet());
+
+/* ---- Speed sheet -------------------------------------------------------- */
+function renderSpeedSheet(){
+  openSheet("speed", "Playback speed", null, body => {
+    SPEED_PRESETS.forEach(s => {
+      body.appendChild(optionRow({
+        label: s === 1 ? "Normal (1x)" : s + "x",
+        selected: Math.abs(state.speed - s) < 0.005,
+        onPick(){ applySpeed(s); closeSheet(); }
+      }));
+    });
+    const isCustom = !SPEED_PRESETS.some(s => Math.abs(state.speed - s) < 0.005);
+    body.appendChild(optionRow({
+      label: "Custom",
+      meta: isCustom ? "Currently " + fmtSpeed(state.speed) : "Any speed from 0.50x to 2.00x",
+      selected: isCustom,
+      onPick: renderCustomSpeedSheet
+    }));
+  });
+}
+
+/* Preview-then-apply: moving the slider does not touch playbackRate. */
+function renderCustomSpeedSheet(){
+  openSheet("customSpeed", "Custom speed", null, body => {
+    const start = clamp(state.speed, SPEED_MIN, SPEED_MAX);
+
+    const wrap = document.createElement("div");
+    wrap.className = "speedwrap";
+
+    const val = document.createElement("div");
+    val.className = "speedval tnum";
+    val.textContent = start.toFixed(2) + "x";
+
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.className = "speedslider";
+    slider.min = String(SPEED_MIN);
+    slider.max = String(SPEED_MAX);
+    slider.step = "0.01";
+    slider.value = String(start);
+    slider.setAttribute("aria-label", "Playback speed");
+
+    const ends = document.createElement("div");
+    ends.className = "speedends";
+    ends.innerHTML = "<span>0.50x</span><span>2.00x</span>";
+
+    const ticks = document.createElement("div");
+    ticks.className = "speedticks";
+    [0.75, 1, 1.25, 1.5, 1.75].forEach(v => {
+      const b = document.createElement("button");
+      b.className = "tick";
+      b.textContent = v.toFixed(2) + "x";
+      b.addEventListener("click", () => { slider.value = String(v); update(); });
+      ticks.appendChild(b);
+    });
+
+    function update(){ val.textContent = Number(slider.value).toFixed(2) + "x"; }
+    slider.addEventListener("input", update);
+
+    const row = document.createElement("div");
+    row.className = "srow";
+    const cancel = document.createElement("button");
+    cancel.className = "btn ghost"; cancel.textContent = "Cancel";
+    cancel.addEventListener("click", renderSpeedSheet);
+    const apply = document.createElement("button");
+    apply.className = "btn primary"; apply.textContent = "Apply";
+    apply.addEventListener("click", () => {
+      applySpeed(Number(slider.value));
+      closeSheet();
+      toast("Speed " + fmtSpeed(state.speed));
+    });
+    row.appendChild(cancel); row.appendChild(apply);
+
+    wrap.appendChild(val);
+    wrap.appendChild(slider);
+    wrap.appendChild(ends);
+    wrap.appendChild(ticks);
+    body.appendChild(wrap);
+    body.appendChild(row);
+  });
+}
+
+/* ---- Quality sheet ------------------------------------------------------ */
+function renderQualitySheet(){
+  const avail = availableQualities();
+  const autoReal = resolveQualityKey("auto");
+
+  const note = avail.length <= 1
+    ? "Only one encoded file is configured, so there is nothing to switch between yet. Add 720p, 480p or 360p URLs to CONFIG.sources and they will appear here automatically."
+    : "Switching reloads the video from a different file and keeps your position.";
+
+  openSheet("quality", "Video quality", note, body => {
+    body.appendChild(optionRow({
+      label: "Auto",
+      meta: autoReal ? "Best available — currently " + autoReal : "No source configured",
+      selected: state.quality === "auto",
+      disabled: !autoReal,
+      onPick(){ selectQuality("auto"); closeSheet(); }
+    }));
+
+    QUALITY_ORDER.forEach(q => {
+      const ok = isUsableUrl(CONFIG.sources[q]);
+      body.appendChild(optionRow({
+        label: q,
+        meta: ok ? dataLine(q) : "Not available",
+        selected: state.quality === q,
+        disabled: !ok,
+        onPick(){ selectQuality(q); closeSheet(); }
+      }));
+    });
+  });
+}
+
+/* ---- Audio sheet — reports only what the platform really exposes -------- */
+function audioTracks(){
+  const list = video.audioTracks;
+  if (!list || typeof list.length !== "number" || list.length === 0) return [];
+  const out = [];
+  for (let i = 0; i < list.length; i++){
+    const t = list[i];
+    out.push({ i, label: t.label || t.language || ("Track " + (i + 1)), lang: t.language || "", on: !!t.enabled });
+  }
+  return out;
+}
+
+function refreshAudioChip(){
+  const tracks = audioTracks();
+  const btn = $("btnAudio");
+  /* Keep the button usable even with one track: tapping explains the situation
+     instead of silently doing nothing. */
+  btn.disabled = false;
+  const cur = tracks.find(t => t.on);
+  $("lblAudio").textContent = cur ? (cur.lang ? cur.lang.toUpperCase() : cur.label) : "Audio";
+}
+
+function renderAudioSheet(){
+  const tracks = audioTracks();
+
+  if (tracks.length < 2){
+    openSheet("audio", "Audio track",
+      tracks.length === 1
+        ? "This file is playing a single audio track. Multiple tracks appear here only when the device decoder and the WebView both expose them."
+        : "This device isn't exposing separate audio tracks for this file. Android WebView only reports them when the platform decoder supports every track, which rules out most E-AC3 streams. Shipping one file per language is the dependable route.",
+      body => {
+        if (tracks.length === 1){
+          body.appendChild(optionRow({ label: tracks[0].label, meta: tracks[0].lang ? "Language: " + tracks[0].lang : "", selected:true }));
+        }
+      });
+    return;
+  }
+
+  openSheet("audio", "Audio track", null, body => {
+    tracks.forEach(t => {
+      body.appendChild(optionRow({
+        label: t.label,
+        meta: t.lang ? "Language: " + t.lang : "",
+        selected: t.on,
+        onPick(){
+          let changed = false;
+          for (let i = 0; i < video.audioTracks.length; i++){
+            const want = (i === t.i);
+            if (video.audioTracks[i].enabled !== want){ video.audioTracks[i].enabled = want; changed = true; }
+          }
+          refreshAudioChip();
+          closeSheet();
+          if (changed) toast("Audio: " + t.label);
+        }
+      }));
+    });
+  });
+}
+
+if (video.audioTracks && typeof video.audioTracks.addEventListener === "function"){
+  video.audioTracks.addEventListener("addtrack", refreshAudioChip);
+  video.audioTracks.addEventListener("removetrack", refreshAudioChip);
+  video.audioTracks.addEventListener("change", refreshAudioChip);
+}
+
+
+/* ============================================================================
+ * 17. NOTICE / ERRORS
+ * ==========================================================================*/
+function showNotice(title, text){
+  closeSheet(true);
+  state.noticeOpen = true;
+  $("noticeTitle").textContent = title;
+  $("noticeText").textContent = text;
+  notice.classList.add("on");
+  showControls(true);
+}
+
+function hideNotice(){
+  state.noticeOpen = false;
+  notice.classList.remove("on");
+}
+
+/* Plain language for the user, detail for the console. */
+function reportMediaError(){
+  showSpinner(false);
+  const err = video.error;
+  const code = err ? err.code : 0;
+  console.warn("media error", code, err && err.message);
+
+  let text = "Check your connection or try again.";
+  if (code === 2) text = "The connection dropped while loading. Check your network and try again.";
+  else if (code === 3) text = "This file couldn't be decoded on this device. It may use a codec Android doesn't support.";
+  else if (code === 4) text = "This video format or address can't be played here.";
+  else if (!navigator.onLine) text = "You appear to be offline. Reconnect and try again.";
+
+  showNotice("Unable to play this video", text);
+}
+
+$("noticeBtn").addEventListener("click", () => {
+  hideNotice();
+  const src = resolveSrc(state.quality) || state.activeSrc;
+  if (!src){ showNotice("No video source configured", "Add your video URL to CONFIG.sources."); return; }
+  state.activeSrc = "";                       // force a genuine reload
+  applySource(src, { time: video.currentTime || state.resumeAt, play:true });
+});
+
+
+/* ============================================================================
+ * 18. VIDEO EVENTS
+ * ==========================================================================*/
+video.addEventListener("timeupdate", () => { queuePaint(); savePositionThrottled(); });
+video.addEventListener("progress", queuePaint);
+video.addEventListener("seeked", () => { queuePaint(); showSpinner(false); });
+video.addEventListener("durationchange", () => { tDur.textContent = fmtTime(video.duration); queuePaint(); });
+
+video.addEventListener("play",  () => { state.ended = false; syncPlayIcon(); scheduleHide(); });
+video.addEventListener("pause", () => { syncPlayIcon(); savePosition(); showControls(true); });
+video.addEventListener("ended", () => { state.ended = true; syncPlayIcon(); showControls(true); clearPosition(); });
+
+video.addEventListener("waiting", () => showSpinner(true));
+video.addEventListener("stalled", () => showSpinner(true));
+video.addEventListener("seeking", () => showSpinner(true));
+video.addEventListener("playing", () => showSpinner(false));
+video.addEventListener("canplay", () => showSpinner(false));
+video.addEventListener("canplaythrough", () => showSpinner(false));
+video.addEventListener("loadeddata", () => showSpinner(false));
+
+/* Keep state honest if anything changes the rate or volume behind our back */
+video.addEventListener("ratechange", () => {
+  if (isNum(video.playbackRate) && Math.abs(video.playbackRate - state.speed) > 0.005){
+    state.speed = video.playbackRate;
+    $("lblSpeed").textContent = fmtSpeed(state.speed);
+  }
+});
+video.addEventListener("volumechange", () => {
+  state.volume = video.volume;
+  state.muted = video.muted;
+});
+
+/* Errors outside an in-flight switch (the switch has its own handler) */
+video.addEventListener("error", () => { if (!state.switching) reportMediaError(); });
+
+
+/* ============================================================================
+ * 19. POSITION MEMORY
+ * ==========================================================================*/
+let lastSave = 0;
+
+function savePosition(){
+  if (!CONFIG.rememberPosition || !state.activeSrc) return;
+  const t = video.currentTime, dur = video.duration;
+  if (!isNum(t) || !isNum(dur) || dur <= 0) return;
+  if (t < CONFIG.minResumeSec || t > dur - CONFIG.endGuardSec){ clearPosition(); return; }
+  Store.set(videoKey(state.activeSrc), Math.floor(t));
+  lastSave = Date.now();
+}
+
+function savePositionThrottled(){
+  if (Date.now() - lastSave > 5000) savePosition();
+}
+
+function clearPosition(){
+  if (!state.activeSrc) return;
+  Store.set(videoKey(state.activeSrc), 0);
+}
+
+
+/* ============================================================================
+ * 20. BUTTONS
+ * ==========================================================================*/
+$("btnPlay").addEventListener("click", () => { togglePlay(); showControls(); });
+$("btnBack10").addEventListener("click", () => {
+  seekBy(-CONFIG.seekStep); showSeekHud(-CONFIG.seekStep, video.currentTime); fadeHud(520); showControls();
+});
+$("btnFwd10").addEventListener("click", () => {
+  seekBy(CONFIG.seekStep); showSeekHud(CONFIG.seekStep, video.currentTime); fadeHud(520); showControls();
+});
+$("btnLock").addEventListener("click", lockScreen);
+$("btnFs").addEventListener("click", () => { toggleFullscreen(); showControls(); });
+$("btnSpeed").addEventListener("click", renderSpeedSheet);
+$("btnQuality").addEventListener("click", renderQualitySheet);
+$("btnAudio").addEventListener("click", renderAudioSheet);
+
+$("btnZoom").addEventListener("click", () => {
+  video.classList.toggle("fill");
+  toast(video.classList.contains("fill") ? "Zoom to fill" : "Fit to screen");
+  showControls();
+});
+
+/* ---- Back: sheet → fullscreen → lock → host app → history --------------- */
+function goBack(){
+  if (state.sheetOpen){ closeSheet(); return; }
+  if (state.noticeOpen){ hideNotice(); return; }
+  if (fsElement()){ exitFullscreen(); return; }
+  if (state.locked){ unlockScreen(); return; }
+  savePosition();
+  if (window.AndroidBridge && typeof window.AndroidBridge.close === "function"){
+    try { window.AndroidBridge.close(); return; } catch(e){}
+  }
+  history.back();
+}
+$("btnBack").addEventListener("click", goBack);
+
+/* Hardware back, when the host routes it through history */
+window.addEventListener("popstate", () => {
+  if (state.sheetOpen) closeSheet();
+});
+
+
+/* ============================================================================
+ * 21. PLATFORM GUARDS
+ * ==========================================================================*/
+document.addEventListener("contextmenu", e => e.preventDefault());
+
+/* Pinch / multi-touch only — single-finger scrolling inside the sheet stays */
+document.addEventListener("touchmove", e => {
+  if (e.touches.length > 1 && e.cancelable) e.preventDefault();
+}, { passive:false });
+
+["gesturestart","gesturechange","gestureend"].forEach(ev =>
+  document.addEventListener(ev, e => e.preventDefault(), { passive:false })
+);
+
+stage.addEventListener("dragstart", e => e.preventDefault());
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden){
+    savePosition();
+    if (!video.paused) video.pause();
+  }
+});
+window.addEventListener("pagehide", savePosition);
+
+/* Orientation / resize: re-measure the timeline, cancel any live gesture */
+function onViewportChange(){
+  G.live = false; G.axis = null; state.gesture = null;
+  if (state.scrubbing) endScrub();
+  queuePaint();
+}
+window.addEventListener("orientationchange", () => setTimeout(onViewportChange, 220));
+window.addEventListener("resize", onViewportChange);
+
+
+/* ============================================================================
+ * 22. KEYBOARD (desktop / TV testing)
+ * ==========================================================================*/
+document.addEventListener("keydown", e => {
+  const tag = e.target && e.target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA") return;   // don't fight the slider
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+  if (state.locked){
+    if (e.key === "l" || e.key === "L"){ e.preventDefault(); unlockScreen(); }
+    return;
+  }
+
+  switch (e.key){
+    case " ": case "k": case "K": e.preventDefault(); togglePlay(); break;
+    case "ArrowRight": e.preventDefault(); seekBy(CONFIG.seekStep); showSeekHud(CONFIG.seekStep, video.currentTime); fadeHud(500); break;
+    case "ArrowLeft":  e.preventDefault(); seekBy(-CONFIG.seekStep); showSeekHud(-CONFIG.seekStep, video.currentTime); fadeHud(500); break;
+    case "ArrowUp":    e.preventDefault(); setVolume(state.volume + 0.05, true); fadeHud(700); break;
+    case "ArrowDown":  e.preventDefault(); setVolume(state.volume - 0.05, true); fadeHud(700); break;
+    case "m": case "M": setVolume(state.volume > 0 ? 0 : 1, true); fadeHud(700); break;
+    case "f": case "F": toggleFullscreen(); break;
+    case "l": case "L": lockScreen(); return;
+    case "Escape": if (state.sheetOpen){ e.preventDefault(); closeSheet(); } break;
+    default: break;
+  }
+  showControls();
+});
+
+
+/* ============================================================================
+ * 23. BOOT
+ * ==========================================================================*/
+(function init(){
+  /* Restore preferences — validated, never trusted blindly */
+  const savedSpeed = Store.get("speed", 1);
+  state.speed = isNum(savedSpeed) ? clamp(savedSpeed, SPEED_MIN, SPEED_MAX) : 1;
+
+  const savedVol = Store.get("volume", 1);
+  setVolume(isNum(savedVol) ? savedVol : 1, false);
+
+  const savedBright = Store.get("brightness", 1);
+  setBrightness(isNum(savedBright) ? savedBright : 1, false);
+
+  const savedQuality = Store.get("quality", CONFIG.defaultQuality);
+  state.quality = (savedQuality === "auto" || QUALITY_ORDER.indexOf(savedQuality) !== -1)
+    ? savedQuality : CONFIG.defaultQuality;
+  if (!resolveQualityKey(state.quality)) state.quality = "auto";
+
+  $("tTitle").textContent = CONFIG.title;
+  $("tSub").textContent = CONFIG.subtitle;
+  $("lblSpeed").textContent = fmtSpeed(state.speed);
+  syncQualityChip();
+  syncPlayIcon();
+  syncFsIcon();
+  refreshAudioChip();
+  showControls(true);
+
+  loadInitial();
+})();
+</script>
+</body>
+</html>
