@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+
+<!--
+  ============================================================================
+  VIEWPORT — critical for the "native app" feel inside an Android WebView.
+  user-scalable=no + maximum-scale=1  -> kills double-tap-to-zoom & pinch-zoom
+  viewport-fit=cover                  -> lets us draw under notches/cutouts
+  ============================================================================
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#08090A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<title>Player</title>
+
+<style>
+/* ==========================================================================
+   DESIGN TOKENS
+   Palette: graphite black chassis + tungsten amber. The amber is used ONLY
+   for "the thing that is currently happening" (progress, active selection,
+   live gesture value). Everything else stays neutral so the film dominates.
+   ========================================================================== */
+:root{
+  --bg:            #08090A;   /* true chassis black                        */
+  --surface:       #121317;   /* bottom sheet / menu background            */
+  --raised:        #1C1E24;   /* pressed + hovered control background      */
+  --hairline:      rgba(255,255,255,.09);
+  --text:          #EDEEF1;
+  --text-dim:      #9AA0AB;
+  --amber:         #FFB020;   /* the single accent                         */
+  --amber-soft:    rgba(255,176,32,.16);
+  --track:         rgba(255,255,255,.18);
+  --buffer:        rgba(255,255,255,.34);
+  --scrim-top:     linear-gradient(180deg, rgba(0,0,0,.82) 0%, rgba(0,0,0,.42) 46%, rgba(0,0,0,0) 100%);
+  --scrim-bottom:  linear-gradient(0deg,  rgba(0,0,0,.90) 0%, rgba(0,0,0,.48) 46%, rgba(0,0,0,0) 100%);
+  --ease:          cubic-bezier(.22,.61,.36,1);
+  --safe-l:        env(safe-area-inset-left, 0px);
+  --safe-r:        env(safe-area-inset-right, 0px);
+  --safe-t:        env(safe-area-inset-top, 0px);
+  --safe-b:        env(safe-area-inset-bottom, 0px);
+}
+
+/* ==========================================================================
+   GLOBAL RESET + NATIVE-FEEL LOCKDOWN
+   ========================================================================== */
+*,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+
+html,body{
+  height:100%;
+  width:100%;
+  background:var(--bg);
+  color:var(--text);
+  overflow:hidden;                       /* no scrolling, ever              */
+  overscroll-behavior:none;              /* kills pull-to-refresh           */
+  -webkit-user-select:none; user-select:none;
+  -webkit-touch-callout:none;            /* no long-press context menu      */
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  font-family:Roboto,-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  font-size:15px;
+  line-height:1.4;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+button{
+  font:inherit; color:inherit; background:none; border:0;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  cursor:pointer;
+}
+
+.tnum{ font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1; }
+
+svg{ display:block; pointer-events:none; }
+
+/* ==========================================================================
+   SHELL + VIDEO
+   ========================================================================== */
+#stage{
+  position:fixed; inset:0;
+  width:100%; height:100%;
+  background:#000;
+  overflow:hidden;
+  contain:layout paint;
+}
+
+#video{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  object-fit:contain;
+  background:#000;
+  display:block;
+  transition:object-fit .18s linear;
+}
+#video.fit-cover{ object-fit:cover; }
+
+#dimmer{
+  position:absolute; inset:0;
+  background:#000;
+  opacity:0;
+  pointer-events:none;
+  z-index:2;
+  will-change:opacity;
+}
+
+#gestures{
+  position:absolute; inset:0;
+  z-index:3;
+  touch-action:none;
+}
+
+/* ==========================================================================
+   HEADS-UP DISPLAYS (gesture feedback)
+   ========================================================================== */
+.hud{
+  position:absolute; z-index:6;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .14s linear;
+}
+.hud.show{ opacity:1; }
+
+#hudSeek{
+  left:50%; top:50%;
+  transform:translate(-50%,-50%);
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:14px 22px;
+  background:rgba(10,11,13,.80);
+  border:1px solid var(--hairline);
+  border-radius:14px;
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  min-width:148px;
+}
+#hudSeekDelta{ font-size:26px; font-weight:600; letter-spacing:-.5px; color:var(--amber); }
+#hudSeekTime{ font-size:13px; color:var(--text-dim); }
+
+#hudLevel{
+  left:50%; top:50%;
+  transform:translate(-50%,-50%);
+  width:196px;
+  padding:16px 18px 14px;
+  background:rgba(10,11,13,.80);
+  border:1px solid var(--hairline);
+  border-radius:14px;
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+}
+.hud-row{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.hud-row svg{ width:22px; height:22px; flex:none; fill:var(--text); }
+#hudLevelLabel{ font-size:13px; color:var(--text-dim); flex:1; }
+#hudLevelValue{ font-size:19px; font-weight:600; letter-spacing:-.3px; }
+.hud-track{ height:3px; border-radius:2px; background:var(--track); overflow:hidden; }
+.hud-fill{
+  height:100%; background:var(--amber);
+  transform-origin:left center; transform:scaleX(0);
+  will-change:transform;
+}
+
+#spinner{
+  position:absolute; left:50%; top:50%; z-index:5;
+  width:44px; height:44px; margin:-22px 0 0 -22px;
+  border:2.5px solid rgba(255,255,255,.16);
+  border-top-color:var(--amber);
+  border-radius:50%;
+  animation:spin .75s linear infinite;
+  display:none;
+  pointer-events:none;
+}
+#spinner.on{ display:block; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+/* ==========================================================================
+   CONTROLS
+   ========================================================================== */
+#controls{
+  position:absolute; inset:0; z-index:7;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .2s var(--ease);
+}
+#controls.visible{ opacity:1; }
+#controls.visible button,
+#controls.visible .bar{ pointer-events:auto; }
+
+.scrim-top,
+.scrim-bottom{ position:absolute; left:0; right:0; pointer-events:none; }
+.scrim-top{ top:0; height:112px; background:var(--scrim-top); }
+.scrim-bottom{ bottom:0; height:168px; background:var(--scrim-bottom); }
+
+.topbar{
+  position:absolute; top:0; left:0; right:0;
+  display:flex; align-items:center; gap:6px;
+  padding:calc(10px + var(--safe-t)) calc(12px + var(--safe-r)) 10px calc(12px + var(--safe-l));
+}
+.title-block{ flex:1; min-width:0; padding:0 6px; }
+.title-block h1{
+  font-size:15px; font-weight:600; letter-spacing:-.2px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.title-block p{
+  font-size:11.5px; color:var(--text-dim); margin-top:2px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+.icon-btn{
+  width:42px; height:42px; flex:none;
+  display:grid; place-items:center;
+  border-radius:11px;
+  transition:background .12s linear, transform .1s linear;
+}
+.icon-btn svg{ width:22px; height:22px; fill:var(--text); }
+.icon-btn:active{ background:var(--raised); transform:scale(.93); }
+.icon-btn.small svg{ width:20px; height:20px; }
+
+.transport{
+  position:absolute; left:50%; top:50%;
+  transform:translate(-50%,-50%);
+  display:flex; align-items:center; gap:34px;
+}
+.transport .skip{ width:52px; height:52px; }
+.transport .skip svg{ width:30px; height:30px; }
+.play-btn{
+  width:74px; height:74px;
+  display:grid; place-items:center;
+  border-radius:50%;
+  background:rgba(12,13,16,.55);
+  border:1px solid var(--hairline);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  transition:transform .12s var(--ease), background .12s linear;
+}
+.play-btn svg{ width:32px; height:32px; fill:var(--text); }
+.play-btn:active{ transform:scale(.9); background:var(--raised); }
+
+.bottombar{
+  position:absolute; left:0; right:0; bottom:0;
+  padding:0 calc(14px + var(--safe-r)) calc(10px + var(--safe-b)) calc(14px + var(--safe-l));
+}
+
+.timeline{
+  position:relative;
+  height:30px;
+  display:flex; align-items:center;
+  touch-action:none;
+  pointer-events:auto;
+}
+.tl-track{
+  position:absolute; left:0; right:0; top:50%;
+  height:3.5px; margin-top:-1.75px;
+  background:var(--track);
+  border-radius:3px;
+  overflow:hidden;
+}
+.tl-buffer,
+.tl-progress{
+  position:absolute; inset:0;
+  transform-origin:left center; transform:scaleX(0);
+  will-change:transform;
+}
+.tl-buffer{ background:var(--buffer); }
+.tl-progress{ background:var(--amber); }
+.tl-thumb{
+  position:absolute; top:50%; left:0;
+  width:13px; height:13px; margin:-6.5px 0 0 -6.5px;
+  border-radius:50%;
+  background:var(--amber);
+  box-shadow:0 0 0 0 var(--amber-soft);
+  transition:box-shadow .15s var(--ease), transform .15s var(--ease);
+  will-change:left;
+}
+.timeline.scrubbing .tl-thumb{ transform:scale(1.28); box-shadow:0 0 0 9px var(--amber-soft); }
+
+.tl-preview{
+  position:absolute; bottom:30px; left:0;
+  transform:translateX(-50%);
+  padding:5px 10px;
+  font-size:12.5px;
+  background:rgba(10,11,13,.9);
+  border:1px solid var(--hairline);
+  border-radius:8px;
+  opacity:0; transition:opacity .12s linear;
+  pointer-events:none; white-space:nowrap;
+}
+.timeline.scrubbing .tl-preview{ opacity:1; }
+
+.actionrow{
+  display:flex; align-items:center; gap:2px;
+  margin-top:2px;
+}
+.times{ font-size:12.5px; color:var(--text-dim); padding:0 8px 0 2px; flex:none; }
+.times b{ color:var(--text); font-weight:500; }
+.spacer{ flex:1; }
+
+.chip{
+  height:32px;
+  display:flex; align-items:center; gap:6px;
+  padding:0 11px;
+  margin-right:2px;
+  border-radius:9px;
+  border:1px solid var(--hairline);
+  font-size:12.5px; color:var(--text);
+  transition:background .12s linear, transform .1s linear;
+}
+.chip svg{ width:15px; height:15px; fill:var(--text-dim); }
+.chip:active{ background:var(--raised); transform:scale(.95); }
+.chip[disabled]{ opacity:.38; }
+
+/* ==========================================================================
+   LOCK MODE
+   ========================================================================== */
+#lockLayer{
+  position:absolute; inset:0; z-index:9;
+  display:none;
+  touch-action:none;
+}
+#lockLayer.on{ display:block; }
+#unlockBtn{
+  position:absolute; top:50%; left:calc(18px + var(--safe-l));
+  transform:translateY(-50%);
+  width:54px; height:54px;
+  display:grid; place-items:center;
+  border-radius:50%;
+  background:rgba(12,13,16,.5);
+  border:1px solid var(--hairline);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  opacity:0; pointer-events:none;
+  transition:opacity .2s var(--ease);
+}
+#unlockBtn.show{ opacity:1; pointer-events:auto; }
+#unlockBtn svg{ width:24px; height:24px; fill:var(--text); }
+#unlockBtn:active{ transform:translateY(-50%) scale(.92); }
+
+#lockToast{
+  position:absolute; left:50%; bottom:calc(30px + var(--safe-b));
+  transform:translateX(-50%);
+  padding:9px 16px;
+  font-size:12.5px; color:var(--text-dim);
+  background:rgba(10,11,13,.82);
+  border:1px solid var(--hairline);
+  border-radius:20px;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  opacity:0; transition:opacity .22s var(--ease);
+  pointer-events:none; white-space:nowrap;
+}
+#lockToast.show{ opacity:1; }
+
+/* ==========================================================================
+   BOTTOM SHEET
+   ========================================================================== */
+#sheet{
+  position:absolute; inset:0; z-index:12;
+  display:none;
+}
+#sheet.open{ display:block; }
+.sheet-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.55); }
+.sheet-panel{
+  position:absolute; left:0; right:0; bottom:0;
+  max-height:76%;
+  display:flex; flex-direction:column;
+  background:var(--surface);
+  border-top:1px solid var(--hairline);
+  border-radius:18px 18px 0 0;
+  padding-bottom:var(--safe-b);
+  transform:translateY(100%);
+  animation:sheetUp .24s var(--ease) forwards;
+}
+@keyframes sheetUp{ to{ transform:translateY(0); } }
+
+.sheet-grip{
+  width:38px; height:4px; border-radius:2px;
+  background:rgba(255,255,255,.16);
+  margin:9px auto 4px;
+  flex:none;
+}
+.sheet-head{
+  display:flex; align-items:center; gap:10px;
+  padding:6px 8px 10px 18px;
+  flex:none;
+}
+.sheet-head h2{ font-size:15px; font-weight:600; flex:1; letter-spacing:-.2px; }
+.sheet-note{
+  padding:0 18px 12px;
+  font-size:12px; color:var(--text-dim);
+  line-height:1.5;
+  max-width:62ch;
+}
+.sheet-body{
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
+  padding:0 8px 14px;
+}
+
+.opt{
+  width:100%;
+  display:flex; align-items:center; gap:12px;
+  padding:13px 12px;
+  border-radius:11px;
+  text-align:left;
+  transition:background .12s linear;
+}
+.opt:active{ background:var(--raised); }
+.opt-text{ flex:1; min-width:0; }
+.opt-label{ font-size:14.5px; }
+.opt-meta{ font-size:12px; color:var(--text-dim); margin-top:2px; }
+.opt-tick{ width:20px; height:20px; flex:none; fill:var(--amber); opacity:0; }
+.opt.active .opt-label{ color:var(--amber); font-weight:500; }
+.opt.active .opt-tick{ opacity:1; }
+.opt-empty{ padding:16px 12px; font-size:13px; color:var(--text-dim); line-height:1.55; }
+
+/* ==========================================================================
+   ERROR / START STATES
+   ========================================================================== */
+#notice{
+  position:absolute; inset:0; z-index:11;
+  display:none;
+  place-items:center;
+  background:rgba(8,9,10,.92);
+  padding:32px;
+  text-align:center;
+}
+#notice.on{ display:grid; }
+#notice .inner{ max-width:48ch; }
+#notice h3{ font-size:16px; font-weight:600; margin-bottom:8px; }
+#notice p{ font-size:13px; color:var(--text-dim); line-height:1.6; }
+#notice button{
+  margin-top:18px; padding:11px 22px;
+  border-radius:10px; background:var(--amber); color:#000;
+  font-size:14px; font-weight:600;
+}
+
+@media (prefers-reduced-motion:reduce){
+  *{ animation-duration:.01ms !important; transition-duration:.01ms !important; }
+}
+</style>
+</head>
+
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.14v13.72c0 .76.83 1.23 1.49.85l11.14-6.86a1 1 0 0 0 0-1.7L9.49 4.29A1 1 0 0 0 8 5.14z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6.8" y="4" width="3.6" height="16" rx="1.2"/><rect x="13.6" y="4" width="3.6" height="16" rx="1.2"/></symbol>
+    <symbol id="i-replay" viewBox="0 0 24 24"><path d="M12 5V2.5c0-.45-.54-.67-.85-.35L7.6 5.29a.5.5 0 0 0 0 .71l3.55 3.15c.31.31.85.08.85-.36V6a6 6 0 1 1-6 6 1 1 0 1 0-2 0 8 8 0 1 0 8-8z"/></symbol>
+    <symbol id="i-back10" viewBox="0 0 24 24"><path d="M12 5V2.2c0-.4-.47-.6-.75-.32L7.3 5.62a.45.45 0 0 0 0 .64l3.95 3.86c.28.28.75.08.75-.32V7a5.5 5.5 0 1 1-5.5 5.5 1 1 0 1 0-2 0A7.5 7.5 0 1 0 12 5z"/><text x="12" y="16" font-size="7.4" font-family="Roboto,Arial" font-weight="700" text-anchor="middle" fill="inherit">10</text></symbol>
+    <symbol id="i-fwd10" viewBox="0 0 24 24"><path d="M12 5V2.2c0-.4.47-.6.75-.32l3.95 3.74a.45.45 0 0 1 0 .64l-3.95 3.86c-.28.28-.75.08-.75-.32V7a5.5 5.5 0 1 0 5.5 5.5 1 1 0 1 1 2 0A7.5 7.5 0 1 1 12 5z"/><text x="12" y="16" font-size="7.4" font-family="Roboto,Arial" font-weight="700" text-anchor="middle" fill="inherit">10</text></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 1 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2zm-7-2a2 2 0 1 1 4 0v2h-4zm2 11a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6z"/></symbol>
+    <symbol id="i-unlock" viewBox="0 0 24 24"><path d="M17 9H10V7a2 2 0 1 1 4 0 1 1 0 0 0 2 0 4 4 0 1 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2zm-5 9a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6z"/></symbol>
+    <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9v6h3.6l4.6 3.9a.7.7 0 0 0 1.15-.54V5.64A.7.7 0 0 0 12.2 5.1L7.6 9zm12.2-.7a1 1 0 0 0-1.3 1.52 3 3 0 0 1 0 4.36 1 1 0 0 0 1.3 1.52 5 5 0 0 0 0-7.4zm2.3-3a1 1 0 1 0-1.2 1.6 7 7 0 0 1 0 10.2 1 1 0 1 0 1.2 1.6 9 9 0 0 0 0-13.4z"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h3.6l4.6 3.9a.7.7 0 0 0 1.15-.54V5.64A.7.7 0 0 0 12.2 5.1L7.6 9zm16.2.3a1 1 0 0 0-1.4-1.4L17 9.68l-1.8-1.78a1 1 0 1 0-1.4 1.4L15.6 11l-1.8 1.8a1 1 0 0 0 1.4 1.42L17 12.42l1.8 1.8a1 1 0 0 0 1.4-1.42L18.42 11z"/></symbol>
+    <symbol id="i-bright" viewBox="0 0 24 24"><path d="M12 7.6A4.4 4.4 0 1 0 12 16.4 4.4 4.4 0 0 0 12 7.6zm0-5.6a1 1 0 0 1 1 1v1.6a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1zm0 16.8a1 1 0 0 1 1 1V21a1 1 0 1 1-2 0v-1.2a1 1 0 0 1 1-1zM21 11a1 1 0 0 1 0 2h-1.2a1 1 0 1 1 0-2zM4.2 11a1 1 0 1 1 0 2H3a1 1 0 1 1 0-2zm14.14-6.34a1 1 0 0 1 0 1.42l-.85.84a1 1 0 0 1-1.4-1.42l.84-.84a1 1 0 0 1 1.41 0zM7.9 16.1a1 1 0 0 1 0 1.42l-.84.84a1 1 0 1 1-1.42-1.42l.85-.84a1 1 0 0 1 1.41 0zm10.44 1.42a1 1 0 0 1-1.41 1.42l-.85-.84a1 1 0 0 1 1.41-1.42zM7.9 7.9A1 1 0 0 1 6.49 7.9l-.85-.84A1 1 0 1 1 7.06 5.64l.84.85A1 1 0 0 1 7.9 7.9z"/></symbol>
+    <symbol id="i-speed" viewBox="0 0 24 24"><path d="M12 4a9 9 0 0 0-7.8 13.5 1 1 0 0 0 1.74-1A7 7 0 1 1 18.06 16.5a1 1 0 0 0 1.74 1A9 9 0 0 0 12 4zm3.9 4.6-4.2 3.02a1.9 1.9 0 1 0 1.47 1.47l3.02-4.2a.26.26 0 0 0-.3-.3z"/></symbol>
+    <symbol id="i-audio" viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 0-7 7v5.4A2.6 2.6 0 0 0 7.6 18h.9a1 1 0 0 0 1-1v-4.6a1 1 0 0 0-1-1H7v-1.4a5 5 0 1 1 10 0v1.4h-1.5a1 1 0 0 0-1 1V17a1 1 0 0 0 1 1h.9a2.6 2.6 0 0 0 2.6-2.6V10a7 7 0 0 0-7-7z"/></symbol>
+    <symbol id="i-quality" viewBox="0 0 24 24"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-3.6l.5 1.6H16a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h1.1l.5-1.6H6a2 2 0 0 1-2-2zm2 .4v8.2h12V6.4z"/></symbol>
+    <symbol id="i-fs" viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4a1 1 0 1 1 0 2H6v3a1 1 0 0 1-2 0zm11-4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 1 1-2 0V6h-3a1 1 0 0 1-1-1zM5 14a1 1 0 0 1 1 1v3h3a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1zm14 0a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4a1 1 0 1 1 0-2h3v-3a1 1 0 0 1 1-1z"/></symbol>
+    <symbol id="i-fsx" viewBox="0 0 24 24"><path d="M9 4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H5a1 1 0 1 1 0-2h3V5a1 1 0 0 1 1-1zm6 0a1 1 0 0 1 1 1v3h3a1 1 0 1 1 0 2h-4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM4 15a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 1 1-2 0v-3H5a1 1 0 0 1-1-1zm10 0a1 1 0 0 1 1-1h4a1 1 0 1 1 0 2h-3v3a1 1 0 1 1-2 0z"/></symbol>
+    <symbol id="i-tick" viewBox="0 0 24 24"><path d="M9.6 16.2 5.4 12l-1.4 1.4 5.6 5.6L20.4 8.2 19 6.8z"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M18.3 5.7a1 1 0 0 0-1.4 0L12 10.6 7.1 5.7a1 1 0 1 0-1.4 1.4l4.9 4.9-4.9 4.9a1 1 0 1 0 1.4 1.4l4.9-4.9 4.9 4.9a1 1 0 0 0 1.4-1.4L13.4 12l4.9-4.9a1 1 0 0 0 0-1.4z"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M15.4 5.6a1 1 0 0 0-1.42 0l-5.7 5.7a1 1 0 0 0 0 1.4l5.7 5.7a1 1 0 0 0 1.42-1.4L10.4 12l5-4.99a1 1 0 0 0 0-1.41z"/></symbol>
+    <symbol id="i-zoom" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5a1 1 0 1 1 0 2H5v4a1 1 0 1 1-2 0zm11-2h5a2 2 0 0 1 2 2v4a1 1 0 1 1-2 0V7h-5a1 1 0 1 1 0-2zM4 13a1 1 0 0 1 1 1v3h5a1 1 0 1 1 0 2H5a2 2 0 0 1-2-2v-3a1 1 0 0 1 1-1zm16 0a1 1 0 0 1 1 1v3a2 2 0 0 1-2 2h-5a1 1 0 1 1 0-2h5v-3a1 1 0 0 1 1-1z"/></symbol>
+  </defs>
+</svg>
+
+<div id="stage">
+
+  <!--
+    Removed crossorigin="anonymous" to avoid CORS blocks with R2 links
+  -->
+  <video id="video"
+         playsinline
+         webkit-playsinline
+         preload="metadata"
+         disablepictureinpicture
+         disableremoteplayback></video>
+
+  <div id="dimmer"></div>
+  <div id="gestures"></div>
+  <div id="spinner"></div>
+
+  <div class="hud" id="hudSeek">
+    <div id="hudSeekDelta" class="tnum">+0s</div>
+    <div id="hudSeekTime" class="tnum">00:00 / 00:00</div>
+  </div>
+
+  <div class="hud" id="hudLevel">
+    <div class="hud-row">
+      <svg id="hudLevelIcon"><use href="#i-vol"></use></svg>
+      <span id="hudLevelLabel">Volume</span>
+      <span id="hudLevelValue" class="tnum">0%</span>
+    </div>
+    <div class="hud-track"><div class="hud-fill" id="hudLevelFill"></div></div>
+  </div>
+
+  <div id="controls">
+    <div class="scrim-top"></div>
+    <div class="scrim-bottom"></div>
+
+    <div class="topbar">
+      <button class="icon-btn" id="btnBack" aria-label="Go back">
+        <svg><use href="#i-chev"></use></svg>
+      </button>
+      <div class="title-block">
+        <h1 id="titleMain">Loading</h1>
+        <p id="titleSub">Preparing playback</p>
+      </div>
+      <button class="icon-btn small" id="btnZoom" aria-label="Switch between fit and fill">
+        <svg><use href="#i-zoom"></use></svg>
+      </button>
+      <button class="icon-btn" id="btnLock" aria-label="Lock screen">
+        <svg><use href="#i-lock"></use></svg>
+      </button>
+    </div>
+
+    <div class="transport">
+      <button class="icon-btn skip" id="btnBack10" aria-label="Back 10 seconds">
+        <svg><use href="#i-back10"></use></svg>
+      </button>
+      <button class="play-btn" id="btnPlay" aria-label="Play">
+        <svg id="playIcon"><use href="#i-play"></use></svg>
+      </button>
+      <button class="icon-btn skip" id="btnFwd10" aria-label="Forward 10 seconds">
+        <svg><use href="#i-fwd10"></use></svg>
+      </button>
+    </div>
+
+    <div class="bottombar">
+      <div class="timeline bar" id="timeline">
+        <div class="tl-track">
+          <div class="tl-buffer"   id="tlBuffer"></div>
+          <div class="tl-progress" id="tlProgress"></div>
+        </div>
+        <div class="tl-thumb"   id="tlThumb"></div>
+        <div class="tl-preview tnum" id="tlPreview">00:00</div>
+      </div>
+
+      <div class="actionrow">
+        <div class="times tnum">
+          <b id="tCurrent">00:00</b> / <span id="tTotal">00:00</span>
+        </div>
+        <div class="spacer"></div>
+
+        <button class="chip" id="btnSpeed">
+          <svg><use href="#i-speed"></use></svg><span id="speedLabel">1x</span>
+        </button>
+
+        <button class="chip" id="btnAudio">
+          <svg><use href="#i-audio"></use></svg><span id="audioLabel">Audio</span>
+        </button>
+
+        <button class="chip" id="btnQuality">
+          <svg><use href="#i-quality"></use></svg><span id="qualityLabel">1080p</span>
+        </button>
+
+        <button class="icon-btn" id="btnFullscreen" aria-label="Enter fullscreen">
+          <svg id="fsIcon"><use href="#i-fs"></use></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="lockLayer">
+    <button id="unlockBtn" aria-label="Unlock screen">
+      <svg><use href="#i-unlock"></use></svg>
+    </button>
+    <div id="lockToast">Screen locked. Tap the key to unlock.</div>
+  </div>
+
+  <div id="sheet">
+    <div class="sheet-backdrop" id="sheetBackdrop"></div>
+    <div class="sheet-panel">
+      <div class="sheet-grip"></div>
+      <div class="sheet-head">
+        <h2 id="sheetTitle">Settings</h2>
+        <button class="icon-btn small" id="sheetClose" aria-label="Close">
+          <svg><use href="#i-close"></use></svg>
+        </button>
+      </div>
+      <p class="sheet-note" id="sheetNote" hidden></p>
+      <div class="sheet-body" id="sheetBody"></div>
+    </div>
+  </div>
+
+  <div id="notice">
+    <div class="inner">
+      <h3 id="noticeTitle">This video won't load</h3>
+      <p id="noticeText">Check the video URL and your connection, then try again.</p>
+      <button id="noticeBtn">Try again</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================================
+ * 1. CONFIG — URL CONNECTED HERE
+ * ==========================================================================*/
+const CONFIG = {
+  title:    "Vishwanath and Sons",
+  subtitle: "1080p · [byCrazyMon]",
+
+  sources: {
+    "1080p": "https://pub-88f8f454da2f497d9de8f204ed5ea900.r2.dev/Vishwanath-and-Sons_1080p-%5BbyCrazyMon%5D.mkv",
+    "720p":  "https://pub-88f8f454da2f497d9de8f204ed5ea900.r2.dev/Vishwanath-and-Sons_1080p-%5BbyCrazyMon%5D.mkv",
+    "480p":  "https://pub-88f8f454da2f497d9de8f204ed5ea900.r2.dev/Vishwanath-and-Sons_1080p-%5BbyCrazyMon%5D.mkv",
+    "360p":  "https://pub-88f8f454da2f497d9de8f204ed5ea900.r2.dev/Vishwanath-and-Sons_1080p-%5BbyCrazyMon%5D.mkv"
+  },
+
+  defaultQuality: "1080p",
+  baseSizeMB: 2400,
+
+  seekPxPerStep:      36,
+  seekSecondsPerStep: 2,
+  doubleTapSkip:      10,
+  verticalTravel:     0.62,
+  gestureDeadzone:    12,
+  edgeGuard:          0.14,
+
+  maxDim: 0.80,
+
+  controlsTimeout: 3500,
+  autoplay: false,
+  startMuted: false,
+  rememberPosition: true
+};
+
+const QUALITY_PROFILES = [
+  { key:"1080p", label:"1080p", sub:"Full HD",     factor:1.00 },
+  { key:"720p",  label:"720p",  sub:"HD",          factor:0.50 },
+  { key:"480p",  label:"480p",  sub:"Data saver",  factor:0.27 },
+  { key:"360p",  label:"360p",  sub:"Lowest data", factor:0.15 }
+];
+
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
+/* ============================================================================
+ * 2. ELEMENT REFERENCES
+ * ==========================================================================*/
+const $ = id => document.getElementById(id);
+
+const video      = $("video");
+const stage      = $("stage");
+const dimmer     = $("dimmer");
+const gestures   = $("gestures");
+const controls   = $("controls");
+const spinner    = $("spinner");
+
+const hudSeek      = $("hudSeek");
+const hudSeekDelta = $("hudSeekDelta");
+const hudSeekTime  = $("hudSeekTime");
+const hudLevel     = $("hudLevel");
+const hudLevelIcon = $("hudLevelIcon");
+const hudLevelLabel= $("hudLevelLabel");
+const hudLevelValue= $("hudLevelValue");
+const hudLevelFill = $("hudLevelFill");
+
+const timeline   = $("timeline");
+const tlBuffer   = $("tlBuffer");
+const tlProgress = $("tlProgress");
+const tlThumb    = $("tlThumb");
+const tlPreview  = $("tlPreview");
+
+const tCurrent   = $("tCurrent");
+const tTotal     = $("tTotal");
+const playIcon   = $("playIcon");
+const fsIcon     = $("fsIcon");
+
+const lockLayer  = $("lockLayer");
+const unlockBtn  = $("unlockBtn");
+const lockToast  = $("lockToast");
+
+const sheet      = $("sheet");
+const sheetTitle = $("sheetTitle");
+const sheetNote  = $("sheetNote");
+const sheetBody  = $("sheetBody");
+
+const notice     = $("notice");
+
+/* ============================================================================
+ * 3. STATE
+ * ==========================================================================*/
+const state = {
+  locked:      false,
+  quality:     CONFIG.defaultQuality,
+  brightness:  1,
+  volume:      1,
+  controlsOn:  true,
+  scrubbing:   false,
+  hideTimer:   null,
+  hudTimer:    null,
+  lastTapTime: 0,
+  lastTapX:    0,
+  tapTimer:    null,
+  resumeAt:    0
+};
+
+/* ============================================================================
+ * 4. HELPERS
+ * ==========================================================================*/
+const clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
+
+function fmtTime(sec){
+  if (!isFinite(sec) || sec < 0) sec = 0;
+  sec = Math.floor(sec);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  const pad = n => String(n).padStart(2, "0");
+  return h > 0 ? h + ":" + pad(m) + ":" + pad(s) : pad(m) + ":" + pad(s);
+}
+
+function fmtData(mb){
+  if (mb >= 1024){
+    const gb = mb / 1024;
+    return (gb >= 10 ? gb.toFixed(1) : gb.toFixed(2)) + " GB";
+  }
+  return Math.round(mb) + " MB";
+}
+
+/* ============================================================================
+ * 5. DATA USAGE CALCULATOR
+ * ==========================================================================*/
+function estimateData(factor){
+  const total    = CONFIG.baseSizeMB * factor;
+  const dur      = isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
+  const watched  = dur ? clamp(video.currentTime / dur, 0, 1) : 0;
+  const remain   = total * (1 - watched);
+  const perMin   = dur ? total / (dur / 60) : 0;
+  return { total, remain, perMin, hasDuration: dur > 0 };
+}
+
+function qualityMetaLine(factor){
+  const e = estimateData(factor);
+  let line = "Uses ~" + fmtData(e.total);
+  if (e.hasDuration && e.remain < e.total * 0.985){
+    line += " · " + fmtData(e.remain) + " left from here";
+  }
+  if (e.perMin > 0){
+    line += " · ~" + fmtData(e.perMin) + " per minute";
+  }
+  return line;
+}
+
+/* ============================================================================
+ * 6. SOURCE LOADING
+ * ==========================================================================*/
+function resolveSrc(qualityKey){
+  const s = CONFIG.sources;
+  return s[qualityKey] || s["1080p"] || "";
+}
+
+function loadSource(qualityKey, keepPosition){
+  const url = resolveSrc(qualityKey);
+  if (!url){
+    showNotice("Add your video URL", "No video link found.");
+    return;
+  }
+
+  const at        = keepPosition ? video.currentTime : state.resumeAt;
+  const wasPlaying= keepPosition ? !video.paused : CONFIG.autoplay;
+  const rate      = video.playbackRate;
+
+  if (video.currentSrc && video.currentSrc === new URL(url, location.href).href){
+    state.quality = qualityKey;
+    $("qualityLabel").textContent = qualityKey;
+    return;
+  }
+
+  state.quality = qualityKey;
+  $("qualityLabel").textContent = qualityKey;
+
+  video.src = url;
+  video.load();
+
+  video.addEventListener("loadedmetadata", function once(){
+    if (at > 0 && at < video.duration) video.currentTime = at;
+    video.playbackRate = rate;
+    if (wasPlaying) video.play().catch(()=>{});
+  }, { once:true });
+}
+
+/* ============================================================================
+ * 7. PLAYBACK CONTROLS
+ * ==========================================================================*/
+function togglePlay(){
+  if (video.paused || video.ended){
+    video.play().catch(err => console.warn("play() rejected:", err));
+  } else {
+    video.pause();
+  }
+}
+
+function skip(seconds){
+  if (!isFinite(video.duration)) return;
+  video.currentTime = clamp(video.currentTime + seconds, 0, video.duration);
+  showSeekHud(seconds, video.currentTime);
+}
+
+function syncPlayIcon(){
+  const icon = video.ended ? "#i-replay" : (video.paused ? "#i-play" : "#i-pause");
+  playIcon.firstElementChild.setAttribute("href", icon);
+  $("btnPlay").setAttribute("aria-label", video.paused ? "Play" : "Pause");
+}
+
+$("btnPlay").addEventListener("click", togglePlay);
+$("btnBack10").addEventListener("click", () => skip(-CONFIG.doubleTapSkip));
+$("btnFwd10").addEventListener("click", () => skip(CONFIG.doubleTapSkip));
+
+$("btnBack").addEventListener("click", () => {
+  if (window.AndroidBridge && typeof AndroidBridge.close === "function"){
+    AndroidBridge.close();
+  } else if (document.fullscreenElement){
+    exitFullscreen();
+  } else {
+    history.back();
+  }
+});
+
+$("btnZoom").addEventListener("click", () => {
+  video.classList.toggle("fit-cover");
+  toast(video.classList.contains("fit-cover") ? "Zoom to fill" : "Fit to screen");
+  scheduleHide();
+});
+
+/* ============================================================================
+ * 8. TIMELINE
+ * ==========================================================================*/
+let rafPending = false;
+
+function paintProgress(){
+  rafPending = false;
+  const dur = video.duration;
+  if (!isFinite(dur) || dur <= 0) return;
+
+  if (!state.scrubbing){
+    const p = clamp(video.currentTime / dur, 0, 1);
+    tlProgress.style.transform = "scaleX(" + p + ")";
+    tlThumb.style.left = (p * 100) + "%";
+    tCurrent.textContent = fmtTime(video.currentTime);
+  }
+
+  try{
+    const b = video.buffered;
+    for (let i = 0; i < b.length; i++){
+      if (b.start(i) <= video.currentTime && video.currentTime <= b.end(i)){
+        tlBuffer.style.transform = "scaleX(" + clamp(b.end(i) / dur, 0, 1) + ")";
+        break;
+      }
+    }
+  }catch(e){}
+}
+
+function requestPaint(){
+  if (!rafPending){ rafPending = true; requestAnimationFrame(paintProgress); }
+}
+
+video.addEventListener("timeupdate", requestPaint);
+video.addEventListener("progress",   requestPaint);
+video.addEventListener("seeked",     requestPaint);
+
+video.addEventListener("loadedmetadata", () => {
+  tTotal.textContent = fmtTime(video.duration);
+  $("titleMain").textContent = CONFIG.title;
+  $("titleSub").textContent  = CONFIG.subtitle;
+  hideNotice();
+  buildAudioButton();
+  requestPaint();
+});
+
+video.addEventListener("play",    () => { syncPlayIcon(); scheduleHide(); });
+video.addEventListener("pause",   () => { syncPlayIcon(); showControls(true); });
+video.addEventListener("ended",   () => { syncPlayIcon(); showControls(true); });
+video.addEventListener("waiting", () => spinner.classList.add("on"));
+video.addEventListener("playing", () => spinner.classList.remove("on"));
+video.addEventListener("canplay", () => spinner.classList.remove("on"));
+video.addEventListener("error",   () => {
+  spinner.classList.remove("on");
+  showNotice("This video won't load",
+             "The file may be in an MKV codec that this browser cannot decode (e.g. HEVC/E-AC3) or connection was interrupted.");
+});
+video.addEventListener("volumechange", () => { state.volume = video.volume; });
+
+function ratioFromEvent(e){
+  const r = timeline.getBoundingClientRect();
+  return clamp((e.clientX - r.left) / r.width, 0, 1);
+}
+
+function scrubTo(ratio){
+  tlProgress.style.transform = "scaleX(" + ratio + ")";
+  tlThumb.style.left = (ratio * 100) + "%";
+  const t = ratio * (video.duration || 0);
+  tCurrent.textContent  = fmtTime(t);
+  tlPreview.textContent = fmtTime(t);
+  tlPreview.style.left  = (ratio * 100) + "%";
+}
+
+timeline.addEventListener("pointerdown", e => {
+  if (state.locked || !isFinite(video.duration)) return;
+  state.scrubbing = true;
+  timeline.classList.add("scrubbing");
+  timeline.setPointerCapture(e.pointerId);
+  scrubTo(ratioFromEvent(e));
+  clearTimeout(state.hideTimer);
+});
+
+timeline.addEventListener("pointermove", e => {
+  if (!state.scrubbing) return;
+  scrubTo(ratioFromEvent(e));
+});
+
+function endScrub(e){
+  if (!state.scrubbing) return;
+  state.scrubbing = false;
+  timeline.classList.remove("scrubbing");
+  video.currentTime = ratioFromEvent(e) * video.duration;
+  scheduleHide();
+}
+timeline.addEventListener("pointerup",     endScrub);
+timeline.addEventListener("pointercancel", endScrub);
+
+/* ============================================================================
+ * 9. CONTROLS VISIBILITY
+ * ==========================================================================*/
+function showControls(sticky){
+  state.controlsOn = true;
+  controls.classList.add("visible");
+  clearTimeout(state.hideTimer);
+  if (!sticky) scheduleHide();
+}
+
+function hideControls(){
+  if (state.scrubbing) return;
+  state.controlsOn = false;
+  controls.classList.remove("visible");
+}
+
+function scheduleHide(){
+  clearTimeout(state.hideTimer);
+  if (video.paused) return;
+  state.hideTimer = setTimeout(hideControls, CONFIG.controlsTimeout);
+}
+
+function toggleControls(){
+  state.controlsOn ? hideControls() : showControls();
+}
+
+/* ============================================================================
+ * 10. GESTURES
+ * ==========================================================================*/
+const g = {
+  active:false, axis:null, zone:null,
+  startX:0, startY:0, lastY:0,
+  startTime:0, startValue:0,
+  seekDelta:0, targetTime:0,
+  moved:false
+};
+
+gestures.addEventListener("touchstart", e => {
+  if (state.locked || state.scrubbing) return;
+  if (e.touches.length > 1){ g.active = false; return; }
+
+  const t = e.touches[0];
+  const w = window.innerWidth;
+
+  if (t.clientX < w * CONFIG.edgeGuard * 0.5 ||
+      t.clientX > w * (1 - CONFIG.edgeGuard * 0.5)){
+    g.active = false;
+    return;
+  }
+
+  g.active    = true;
+  g.axis      = null;
+  g.moved     = false;
+  g.startX    = t.clientX;
+  g.startY    = t.clientY;
+  g.lastY     = t.clientY;
+  g.startTime = video.currentTime;
+  g.zone      = t.clientX < w / 2 ? "brightness" : "volume";
+  g.seekDelta = 0;
+}, { passive:true });
+
+gestures.addEventListener("touchmove", e => {
+  if (!g.active) return;
+  e.preventDefault();
+
+  const t  = e.touches[0];
+  const dx = t.clientX - g.startX;
+  const dy = t.clientY - g.startY;
+
+  if (!g.axis){
+    if (Math.abs(dx) < CONFIG.gestureDeadzone && Math.abs(dy) < CONFIG.gestureDeadzone) return;
+    g.axis  = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    g.moved = true;
+    g.startValue = (g.zone === "volume") ? state.volume : state.brightness;
+    hideControls();
+  }
+
+  if (g.axis === "x"){
+    if (!isFinite(video.duration)) return;
+    const steps = Math.trunc(dx / CONFIG.seekPxPerStep);
+    const delta = steps * CONFIG.seekSecondsPerStep;
+    if (delta !== g.seekDelta){
+      g.seekDelta  = delta;
+      g.targetTime = clamp(g.startTime + delta, 0, video.duration);
+      showSeekHud(delta, g.targetTime);
+    }
+  } else {
+    const span  = window.innerHeight * CONFIG.verticalTravel;
+    const value = clamp(g.startValue - (dy / span), 0, 1);
+    if (g.zone === "volume") setVolume(value, true);
+    else                     setBrightness(value, true);
+  }
+}, { passive:false });
+
+gestures.addEventListener("touchend", e => {
+  if (!g.active) return;
+  g.active = false;
+
+  if (g.axis === "x" && g.seekDelta !== 0 && isFinite(video.duration)){
+    video.currentTime = g.targetTime;
+    hideHudSoon(420);
+  } else if (g.axis === "y"){
+    hideHudSoon(520);
+  } else if (!g.moved){
+    handleTap(e);
+  }
+  g.axis = null;
+}, { passive:true });
+
+gestures.addEventListener("touchcancel", () => { g.active = false; g.axis = null; });
+
+function handleTap(e){
+  const t    = e.changedTouches[0];
+  const now  = Date.now();
+  const x    = t.clientX;
+  const w    = window.innerWidth;
+  const isDouble = (now - state.lastTapTime) < 260 && Math.abs(x - state.lastTapX) < 60;
+
+  if (isDouble){
+    clearTimeout(state.tapTimer);
+    state.lastTapTime = 0;
+    if (x < w * 0.30)      skip(-CONFIG.doubleTapSkip);
+    else if (x > w * 0.70) skip(CONFIG.doubleTapSkip);
+    else                   togglePlay();
+    return;
+  }
+
+  state.lastTapTime = now;
+  state.lastTapX    = x;
+  state.tapTimer = setTimeout(toggleControls, 260);
+}
+
+/* ============================================================================
+ * 11. VOLUME & BRIGHTNESS
+ * ==========================================================================*/
+function setVolume(v, withHud){
+  state.volume = clamp(v, 0, 1);
+  video.volume = state.volume;
+  video.muted  = state.volume === 0;
+  if (withHud){
+    showLevelHud(state.volume === 0 ? "#i-mute" : "#i-vol", "Volume", state.volume);
+  }
+}
+
+function setBrightness(b, withHud){
+  state.brightness = clamp(b, 0, 1);
+  dimmer.style.opacity = ((1 - state.brightness) * CONFIG.maxDim).toFixed(3);
+
+  if (window.AndroidBridge && typeof AndroidBridge.setBrightness === "function"){
+    try{ AndroidBridge.setBrightness(state.brightness); }catch(e){}
+  }
+
+  if (withHud) showLevelHud("#i-bright", "Brightness", state.brightness);
+}
+
+/* ============================================================================
+ * 12. HUD RENDERING
+ * ==========================================================================*/
+function showSeekHud(delta, target){
+  hudLevel.classList.remove("show");
+  hudSeekDelta.textContent = (delta >= 0 ? "+" : "") + Math.round(delta) + "s";
+  hudSeekTime.textContent  = fmtTime(target) + " / " + fmtTime(video.duration || 0);
+  hudSeek.classList.add("show");
+  clearTimeout(state.hudTimer);
+  state.hudTimer = setTimeout(() => hudSeek.classList.remove("show"), 900);
+}
+
+function showLevelHud(iconId, label, value){
+  hudSeek.classList.remove("show");
+  hudLevelIcon.firstElementChild.setAttribute("href", iconId);
+  hudLevelLabel.textContent = label;
+  hudLevelValue.textContent = Math.round(value * 100) + "%";
+  hudLevelFill.style.transform = "scaleX(" + value + ")";
+  hudLevel.classList.add("show");
+  clearTimeout(state.hudTimer);
+}
+
+function hideHudSoon(ms){
+  clearTimeout(state.hudTimer);
+  state.hudTimer = setTimeout(() => {
+    hudSeek.classList.remove("show");
+    hudLevel.classList.remove("show");
+  }, ms);
+}
+
+let toastTimer;
+function toast(msg){
+  lockToast.textContent = msg;
+  lockToast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    lockToast.classList.remove("show");
+    if (state.locked) lockToast.textContent = "Screen locked. Tap the key to unlock.";
+  }, 1600);
+}
+
+/* ============================================================================
+ * 13. SCREEN LOCK
+ * ==========================================================================*/
+let unlockTimer;
+
+function lockScreen(){
+  state.locked = true;
+  hideControls();
+  closeSheet();
+  lockLayer.classList.add("on");
+  lockToast.textContent = "Screen locked. Tap the key to unlock.";
+  flashUnlock();
+}
+
+function unlockScreen(){
+  state.locked = false;
+  lockLayer.classList.remove("on");
+  unlockBtn.classList.remove("show");
+  lockToast.classList.remove("show");
+  clearTimeout(unlockTimer);
+  toast("Screen unlocked");
+  showControls();
+}
+
+function flashUnlock(){
+  unlockBtn.classList.add("show");
+  lockToast.classList.add("show");
+  clearTimeout(unlockTimer);
+  unlockTimer = setTimeout(() => {
+    unlockBtn.classList.remove("show");
+    lockToast.classList.remove("show");
+  }, 3000);
+}
+
+$("btnLock").addEventListener("click", lockScreen);
+unlockBtn.addEventListener("click", e => { e.stopPropagation(); unlockScreen(); });
+
+lockLayer.addEventListener("touchstart", e => {
+  if (e.target === unlockBtn || unlockBtn.contains(e.target)) return;
+  e.preventDefault();
+  flashUnlock();
+}, { passive:false });
+
+/* ============================================================================
+ * 14. FULLSCREEN
+ * ==========================================================================*/
+function isFullscreen(){
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+async function enterFullscreen(){
+  const el = stage;
+  try{
+    if (el.requestFullscreen)            await el.requestFullscreen({ navigationUI:"hide" });
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  }catch(err){
+    console.warn("requestFullscreen failed:", err);
+  }
+
+  try{
+    if (screen.orientation && screen.orientation.lock){
+      await screen.orientation.lock("landscape");
+    }
+  }catch(err){
+    console.warn("orientation.lock unavailable:", err);
+  }
+  syncFsIcon();
+}
+
+async function exitFullscreen(){
+  try{
+    if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+  }catch(e){}
+  try{
+    if (document.exitFullscreen)            await document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }catch(e){}
+  syncFsIcon();
+}
+
+function syncFsIcon(){
+  const on = isFullscreen();
+  fsIcon.firstElementChild.setAttribute("href", on ? "#i-fsx" : "#i-fs");
+  $("btnFullscreen").setAttribute("aria-label", on ? "Exit fullscreen" : "Enter fullscreen");
+}
+
+$("btnFullscreen").addEventListener("click", () => {
+  isFullscreen() ? exitFullscreen() : enterFullscreen();
+  scheduleHide();
+});
+
+document.addEventListener("fullscreenchange",       syncFsIcon);
+document.addEventListener("webkitfullscreenchange", syncFsIcon);
+
+/* ============================================================================
+ * 15. BOTTOM SHEET MENUS
+ * ==========================================================================*/
+function openSheet(title, rows, note){
+  sheetTitle.textContent = title;
+
+  if (note){ sheetNote.textContent = note; sheetNote.hidden = false; }
+  else     { sheetNote.hidden = true; }
+
+  sheetBody.innerHTML = "";
+
+  if (!rows.length){
+    const empty = document.createElement("div");
+    empty.className = "opt-empty";
+    empty.textContent = "Nothing to choose here.";
+    sheetBody.appendChild(empty);
+  }
+
+  rows.forEach(row => {
+    const btn = document.createElement("button");
+    btn.className = "opt" + (row.active ? " active" : "");
+
+    const text = document.createElement("div");
+    text.className = "opt-text";
+
+    const label = document.createElement("div");
+    label.className = "opt-label";
+    label.textContent = row.label;
+    text.appendChild(label);
+
+    if (row.meta){
+      const meta = document.createElement("div");
+      meta.className = "opt-meta";
+      meta.textContent = row.meta;
+      text.appendChild(meta);
+    }
+
+    const tick = document.createElementNS("http://www.w3.org/2000/svg","svg");
+    tick.setAttribute("class","opt-tick");
+    tick.setAttribute("viewBox","0 0 24 24");
+    const use = document.createElementNS("http://www.w3.org/2000/svg","use");
+    use.setAttribute("href","#i-tick");
+    tick.appendChild(use);
+
+    btn.appendChild(text);
+    btn.appendChild(tick);
+    btn.addEventListener("click", () => { row.onPick(); closeSheet(); });
+    sheetBody.appendChild(btn);
+  });
+
+  sheet.classList.add("open");
+  clearTimeout(state.hideTimer);
+  showControls(true);
+}
+
+function closeSheet(){
+  sheet.classList.remove("open");
+  scheduleHide();
+}
+
+$("sheetClose").addEventListener("click", closeSheet);
+$("sheetBackdrop").addEventListener("click", closeSheet);
+
+$("btnSpeed").addEventListener("click", () => {
+  openSheet("Playback speed", SPEEDS.map(s => ({
+    label:  s === 1 ? "Normal (1x)" : s + "x",
+    active: Math.abs(video.playbackRate - s) < 0.01,
+    onPick(){
+      video.playbackRate = s;
+      $("speedLabel").textContent = s + "x";
+      toast("Speed " + s + "x");
+    }
+  })));
+});
+
+$("btnQuality").addEventListener("click", () => {
+  const rows = QUALITY_PROFILES.map(q => ({
+    label:  q.label + "  ·  " + q.sub,
+    meta:   qualityMetaLine(q.factor),
+    active: state.quality === q.key,
+    onPick(){
+      loadSource(q.key, true);
+      toast(q.label + " · about " + fmtData(estimateData(q.factor).remain) + " from here");
+    }
+  }));
+
+  openSheet("Video quality", rows,
+    "Estimates are based on a " + fmtData(CONFIG.baseSizeMB) +
+    " file at 1080p. Actual usage varies with the encode and how much you watch.");
+});
+
+function getAudioTracks(){
+  const list = video.audioTracks;
+  if (!list || !list.length) return [];
+  const out = [];
+  for (let i = 0; i < list.length; i++){
+    const t = list[i];
+    out.push({
+      index: i,
+      label: t.label || t.language || ("Track " + (i + 1)),
+      lang:  t.language || "",
+      on:    t.enabled
+    });
+  }
+  return out;
+}
+
+function buildAudioButton(){
+  const tracks = getAudioTracks();
+  const btn    = $("btnAudio");
+  btn.disabled = tracks.length < 1;
+  const current = tracks.find(t => t.on);
+  $("audioLabel").textContent =
+    current ? (current.lang ? current.lang.toUpperCase() : current.label) : "Audio";
+}
+
+$("btnAudio").addEventListener("click", () => {
+  const tracks = getAudioTracks();
+
+  if (!tracks.length){
+    openSheet("Audio track", [],
+      "This device isn't exposing separate audio tracks for the file. Multi-track switching needs both browser support for audioTracks and a decoder for the second track.");
+    return;
+  }
+
+  openSheet("Audio track", tracks.map(t => ({
+    label:  t.label,
+    meta:   t.lang ? "Language: " + t.lang : "",
+    active: t.on,
+    onPick(){
+      for (let i = 0; i < video.audioTracks.length; i++){
+        video.audioTracks[i].enabled = (i === t.index);
+      }
+      buildAudioButton();
+      toast("Audio: " + t.label);
+    }
+  })));
+});
+
+if (video.audioTracks && video.audioTracks.addEventListener){
+  video.audioTracks.addEventListener("addtrack",    buildAudioButton);
+  video.audioTracks.addEventListener("removetrack", buildAudioButton);
+  video.audioTracks.addEventListener("change",      buildAudioButton);
+}
+
+/* ============================================================================
+ * 16. NOTICE / ERROR SCREEN
+ * ==========================================================================*/
+function showNotice(title, text){
+  $("noticeTitle").textContent = title;
+  $("noticeText").textContent  = text;
+  notice.classList.add("on");
+}
+function hideNotice(){ notice.classList.remove("on"); }
+
+$("noticeBtn").addEventListener("click", () => {
+  hideNotice();
+  loadSource(state.quality, false);
+});
+
+/* ============================================================================
+ * 17. GUARDS
+ * ==========================================================================*/
+document.addEventListener("contextmenu", e => e.preventDefault());
+
+["gesturestart","gesturechange","gestureend"].forEach(evt =>
+  document.addEventListener(evt, e => e.preventDefault(), { passive:false })
+);
+
+document.addEventListener("touchmove", e => {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive:false });
+
+stage.addEventListener("dragstart", e => e.preventDefault());
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && !video.paused){
+    state.resumeAt = video.currentTime;
+    video.pause();
+  }
+});
+
+window.addEventListener("orientationchange", () => setTimeout(requestPaint, 220));
+window.addEventListener("resize", requestPaint);
+
+document.addEventListener("keydown", e => {
+  if (state.locked) return;
+  switch(e.key){
+    case " ": case "k": e.preventDefault(); togglePlay(); break;
+    case "ArrowRight":  skip(CONFIG.seekSecondsPerStep); break;
+    case "ArrowLeft":   skip(-CONFIG.seekSecondsPerStep); break;
+    case "ArrowUp":     setVolume(state.volume + 0.05, true); hideHudSoon(700); break;
+    case "ArrowDown":   setVolume(state.volume - 0.05, true); hideHudSoon(700); break;
+    case "f":           isFullscreen() ? exitFullscreen() : enterFullscreen(); break;
+    case "l":           state.locked ? unlockScreen() : lockScreen(); break;
+  }
+  showControls();
+});
+
+/* ============================================================================
+ * 18. BOOT
+ * ==========================================================================*/
+(function init(){
+  video.muted  = CONFIG.startMuted;
+  setVolume(CONFIG.startMuted ? 0 : 1, false);
+  setBrightness(1, false);
+
+  $("titleMain").textContent    = CONFIG.title;
+  $("titleSub").textContent     = CONFIG.subtitle;
+  $("qualityLabel").textContent = CONFIG.defaultQuality;
+  $("speedLabel").textContent   = "1x";
+
+  syncPlayIcon();
+  syncFsIcon();
+  buildAudioButton();
+  showControls(true);
+
+  loadSource(CONFIG.defaultQuality, false);
+})();
+</script>
+</body>
+</html>
