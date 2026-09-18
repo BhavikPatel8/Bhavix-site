@@ -24,8 +24,8 @@
   --faint:#6C7280;
   --amber:#FFB020;
   --amber-soft:rgba(255,176,32,.16);
-  --track:rgba(255,255,255,.18);
-  --buffer:rgba(255,255,255,.34);
+  --track:rgba(255,255,255,.16);
+  --buffer:rgba(255,255,255,.42);
   --glass:rgba(10,11,13,.58);
   --ease:cubic-bezier(.22,.61,.36,1);
   --sl:env(safe-area-inset-left,0px);
@@ -34,11 +34,27 @@
   --sb:env(safe-area-inset-bottom,0px);
 
   /* ---- Z-LADDER (single source of truth) ---------------------------------
-     1 video · 2 dim(night+brightness) · 3 gestures · 4 spinner · 5 HUD
-     6 controls · 7 loading · 8 lock · 9 sheet · 10 notice · 11 toast
+     Ripples belong BEHIND the transport buttons they echo. Everything that is
+     centred on screen and transient — spinner, seek HUD, level HUD — belongs
+     ABOVE the controls, because both are anchored at 50%/50% and would
+     otherwise collide with the play button. Layering alone is not enough:
+     see the `#stage.ctl` offsets further down, which move the centred layers
+     clear of the transport whenever the controls are on screen.
+
+     1 video · 2 dim(night+brightness) · 3 gestures · 4 ripple · 5 controls
+     6 spinner · 7 HUD · 8 loading · 9 lock · 10 sheet · 11 notice · 12 toast
      ----------------------------------------------------------------------*/
-  --z-video:1; --z-dim:2; --z-gestures:3; --z-spinner:4; --z-hud:5;
-  --z-controls:6; --z-load:7; --z-lock:8; --z-sheet:9; --z-notice:10; --z-toast:11;
+  --z-video:1; --z-dim:2; --z-gestures:3; --z-ripple:4; --z-controls:5;
+  --z-spinner:6; --z-hud:7; --z-load:8; --z-lock:9; --z-sheet:10;
+  --z-notice:11; --z-toast:12;
+
+  /* How far each centred layer lifts when the transport is visible. These are
+     not round numbers picked by eye: each is (spinner-ring radius + clearance +
+     half that layer's own height), so the layer clears BOTH the play button and
+     the buffering ring even when the two appear together. The seek HUD is the
+     tallest of the three — it carries the position bar — so it lifts furthest. */
+  --lift-seek:98px;
+  --lift-level:84px;
 }
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -81,39 +97,63 @@ svg{display:block;pointer-events:none}
 
 /* One composited black sheet carries BOTH night mode and the brightness
    gesture. Two overlays would double-darken and cost an extra layer. */
+/* No permanent `will-change:opacity` here. It used to pin a full-screen RGBA
+   layer in GPU memory for the whole session (≈10 MB on a 1080×2400 panel) for
+   an overlay that changes only while the brightness gesture is live. The class
+   below promotes it for the duration of the drag and lets it go again. */
 #dim{
   position:absolute;inset:0;z-index:var(--z-dim);
   background:#000;opacity:0;pointer-events:none;
-  will-change:opacity;transition:opacity .22s linear;
+  transition:opacity .22s linear;
 }
+#dim.live{will-change:opacity;transition:none}
 
 #gestures{position:absolute;inset:0;z-index:var(--z-gestures);touch-action:none}
 
 /* ============================================================================
    BUFFERING SPINNER (distinct from the initial loading screen)
    ==========================================================================*/
+/* The spinner is centred, and so is the play button. Rather than hiding one
+   behind the other, the ring grows to sit AROUND the play button whenever the
+   transport is on screen, and shrinks back to a plain 38px spinner when the
+   controls fade out. It never intercepts touches, so the button underneath
+   stays fully tappable while buffering. */
 #spinner{
   position:absolute;left:50%;top:50%;z-index:var(--z-spinner);
   width:38px;height:38px;margin:-19px 0 0 -19px;
   border:2.5px solid rgba(255,255,255,.14);
   border-top-color:var(--amber);border-radius:50%;
   animation:spin .8s linear infinite;
-  opacity:0;pointer-events:none;transition:opacity .18s linear;
+  opacity:0;pointer-events:none;
+  transition:opacity .18s linear,width .2s var(--ease),height .2s var(--ease),margin .2s var(--ease);
 }
 #spinner.on{opacity:1}
+#stage.ctl #spinner{width:88px;height:88px;margin:-44px 0 0 -44px;border-width:2px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ============================================================================
    HUDs
    ==========================================================================*/
+/* THE FIX for the reported SS1/SS2 glitch.
+   Both HUDs are anchored at the exact centre of the stage — and so is the play
+   button. Previously the HUD sat one step BELOW the controls in the z-ladder,
+   so tapping ±10s painted "−10s / 1:26:44 / 2:40:21" behind the play button and
+   the text leaked out on either side of it.
+   Two changes make that impossible: the HUDs now sit above the controls, and
+   `#stage.ctl` lifts them clear of the transport row while it is visible. When
+   the controls are hidden (any swipe hides them) they sit dead centre, which is
+   the MX-Player-style placement users expect. */
 .hud{
   position:absolute;left:50%;top:50%;z-index:var(--z-hud);
   transform:translate(-50%,-50%);
-  pointer-events:none;opacity:0;transition:opacity .12s linear;
+  pointer-events:none;opacity:0;
+  transition:opacity .12s linear,transform .2s var(--ease);
 }
 .hud.on{opacity:1}
+#stage.ctl #hudSeek{transform:translate(-50%,calc(-50% - var(--lift-seek)))}
+#stage.ctl #hudLevel{transform:translate(-50%,calc(-50% - var(--lift-level)))}
 
-#hudSeek{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 20px}
+#hudSeek{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 20px}
 #hudSeekDelta{
   font-size:30px;font-weight:600;letter-spacing:-.6px;color:#fff;
   text-shadow:0 2px 14px rgba(0,0,0,.85),0 0 3px rgba(0,0,0,.7);
@@ -121,6 +161,13 @@ svg{display:block;pointer-events:none}
 }
 #hudSeekDelta svg{width:24px;height:24px;fill:#fff;filter:drop-shadow(0 2px 10px rgba(0,0,0,.8))}
 #hudSeekTime{font-size:13px;color:rgba(255,255,255,.82);text-shadow:0 1px 8px rgba(0,0,0,.9)}
+/* Where the swipe will land you, on the scale of the whole movie. */
+#hudSeekBar{
+  width:148px;height:3px;margin-top:4px;border-radius:2px;
+  background:rgba(255,255,255,.22);overflow:hidden;
+  box-shadow:0 1px 6px rgba(0,0,0,.6);
+}
+#hudSeekBarFill{height:100%;background:var(--amber);transform-origin:left center;transform:scaleX(0)}
 
 #hudLevel{
   width:180px;padding:14px 16px 12px;
@@ -134,8 +181,11 @@ svg{display:block;pointer-events:none}
 .hud-track{height:3px;border-radius:2px;background:var(--track);overflow:hidden}
 .hud-fill{height:100%;background:var(--amber);transform-origin:left center;transform:scaleX(0);will-change:transform}
 
+/* Deliberately BELOW the controls: on a 360px-wide phone a 120px ripple
+   overlaps the ±10s buttons, and a translucent wash sitting on top of an icon
+   reads as a rendering fault. Behind them it reads as a touch echo. */
 .ripple{
-  position:absolute;top:50%;z-index:var(--z-hud);
+  position:absolute;top:50%;z-index:var(--z-ripple);
   width:120px;height:120px;margin-top:-60px;border-radius:50%;
   background:rgba(255,255,255,.13);transform:scale(.4);opacity:0;pointer-events:none;
 }
@@ -145,30 +195,41 @@ svg{display:block;pointer-events:none}
 /* ============================================================================
    CONTROLS
    ==========================================================================*/
+/* `visibility` is what actually stops the WebView painting this subtree. With
+   opacity alone the four backdrop-filter surfaces underneath (play button,
+   chips, preview bubble) keep their blur layers alive and get re-composited
+   every frame even at opacity:0. The zero-duration visibility step is delayed
+   by the fade length so the transition still looks identical. */
 #controls{
   position:absolute;inset:0;z-index:var(--z-controls);
-  pointer-events:none;opacity:0;transition:opacity .2s var(--ease);
+  pointer-events:none;opacity:0;visibility:hidden;
+  transition:opacity .2s var(--ease),visibility 0s linear .2s;
 }
-#controls.on{opacity:1}
+#controls.on{opacity:1;visibility:visible;transition:opacity .2s var(--ease),visibility 0s linear 0s}
 #controls.on button,#controls.on .hit{pointer-events:auto}
 
-.scrim-t,.scrim-b{position:absolute;left:0;right:0;pointer-events:none}
-.scrim-t{top:0;height:120px;background:linear-gradient(180deg,rgba(0,0,0,.82),rgba(0,0,0,.40) 50%,transparent)}
-.scrim-b{bottom:0;height:164px;background:linear-gradient(0deg,rgba(0,0,0,.88),rgba(0,0,0,.44) 48%,transparent)}
+.scrim-b{position:absolute;left:0;right:0;bottom:0;height:164px;pointer-events:none;
+  background:linear-gradient(0deg,rgba(0,0,0,.88),rgba(0,0,0,.44) 48%,transparent)}
 
+/* The top scrim used to be a separate 120px-tall element. A title that wrapped
+   past two lines would run out the bottom of it and sit on bare video. Carrying
+   the gradient on the bar itself means it always grows to cover the full title,
+   however long — and it is one less DOM node to composite. */
 .topbar{
   position:absolute;top:0;left:0;right:0;
   display:flex;align-items:flex-start;gap:2px;
-  padding:calc(8px + var(--st)) calc(8px + var(--sr)) 8px calc(8px + var(--sl));
+  padding:calc(8px + var(--st)) calc(8px + var(--sr)) 34px calc(8px + var(--sl));
+  background:linear-gradient(180deg,rgba(0,0,0,.84),rgba(0,0,0,.42) 56%,transparent);
 }
-/* Title: wraps to two lines rather than truncating. min-width:0 lets it
-   shrink inside the flex row so it can never push the buttons off-screen. */
+/* Title: the complete name, always. It wraps as far as it needs to and is never
+   clamped or ellipsised. min-width:0 lets it shrink inside the flex row so it
+   can never push the buttons off-screen. */
 .titles{flex:1;min-width:0;padding:5px 6px 0}
 .titles h1{
   font-size:clamp(13px,3.9vw,15.5px);
-  font-weight:600;letter-spacing:-.2px;line-height:1.22;
-  overflow-wrap:break-word;word-break:normal;
-  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;
+  font-weight:600;letter-spacing:-.2px;line-height:1.24;
+  overflow-wrap:break-word;word-break:normal;hyphens:none;
+  text-shadow:0 1px 10px rgba(0,0,0,.6);
 }
 .titles p{font-size:11px;color:var(--dim);margin-top:2px;white-space:nowrap;overflow:hidden}
 
@@ -211,14 +272,22 @@ svg{display:block;pointer-events:none}
 .tl-buf,.tl-prog{position:absolute;inset:0;transform-origin:left center;transform:scaleX(0);will-change:transform}
 .tl-buf{background:var(--buffer)}
 .tl-prog{background:var(--amber)}
+/* The thumb used to be positioned with `left:%`, which forces a layout pass on
+   every timeupdate and on every frame of a scrub. It is now translated on the
+   compositor instead. The grow-on-scrub effect moved to the inner dot so the
+   two transforms never overwrite each other. */
 .tl-thumb{
   position:absolute;top:50%;left:0;width:12px;height:12px;margin:-6px 0 0 -6px;
-  border-radius:50%;background:var(--amber);box-shadow:0 0 0 0 var(--amber-soft);
-  transition:box-shadow .15s var(--ease),transform .15s var(--ease);will-change:left;
+  will-change:transform;
 }
-.timeline.scrub .tl-thumb{transform:scale(1.3);box-shadow:0 0 0 9px var(--amber-soft)}
+.tl-dot{
+  display:block;width:100%;height:100%;border-radius:50%;
+  background:var(--amber);box-shadow:0 0 0 0 var(--amber-soft);
+  transition:box-shadow .15s var(--ease),transform .15s var(--ease);
+}
+.timeline.scrub .tl-dot{transform:scale(1.3);box-shadow:0 0 0 9px var(--amber-soft)}
 .tl-preview{
-  position:absolute;bottom:28px;left:0;transform:translateX(-50%);
+  position:absolute;bottom:28px;left:0;transform:translate3d(0,0,0) translateX(-50%);
   padding:5px 10px;font-size:12.5px;
   background:var(--glass);border:1px solid var(--hairline);border-radius:8px;
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
@@ -250,14 +319,16 @@ svg{display:block;pointer-events:none}
   .ib{width:38px;height:38px}
 }
 @media (max-height:430px) and (orientation:landscape){
-  .scrim-t{height:96px}
+  :root{--lift-seek:84px;--lift-level:76px}
   .scrim-b{height:130px}
   .playbtn{width:60px;height:60px}
   .playbtn svg{width:26px;height:26px}
   .transport .skip{width:44px;height:44px}
   .transport .skip svg{width:25px;height:25px}
-  .topbar{padding-top:calc(5px + var(--st));padding-bottom:4px}
-  .titles h1{-webkit-line-clamp:1;font-size:14.5px}
+  #stage.ctl #spinner{width:78px;height:78px;margin:-39px 0 0 -39px}
+  .topbar{padding-top:calc(5px + var(--st));padding-bottom:26px}
+  .titles h1{font-size:14.5px}
+  #hudSeekDelta{font-size:26px}
 }
 
 /* ============================================================================
@@ -271,18 +342,53 @@ svg{display:block;pointer-events:none}
   padding:24px;
 }
 #loading.gone{opacity:0;visibility:hidden;pointer-events:none}
-.load-in{display:flex;flex-direction:column;align-items:center;text-align:center;max-width:82vw}
-.load-ring{
-  width:34px;height:34px;margin-bottom:22px;
-  border:2px solid rgba(255,255,255,.12);
-  border-top-color:var(--amber);border-radius:50%;
-  animation:spin .9s linear infinite;
+.load-in{display:flex;flex-direction:column;align-items:center;text-align:center;max-width:86vw}
+
+/* Preview card, then the complete movie name directly beneath it.
+   Sized with clamp() rather than aspect-ratio so it holds its 16:9 shape on
+   older WebView builds too. It costs nothing on the network: CONFIG.poster is
+   optional, and with no artwork the card draws its own mark. */
+.load-card{
+  position:relative;flex:none;
+  width:clamp(176px,62vw,300px);height:clamp(99px,34.87vw,169px);
+  margin-bottom:18px;border-radius:14px;overflow:hidden;
+  background:linear-gradient(145deg,#171a20,#0a0b0e);
+  border:1px solid var(--hairline);
+  box-shadow:0 14px 34px rgba(0,0,0,.55);
+  display:flex;align-items:center;justify-content:center;
 }
+#loadPoster{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  opacity:0;transition:opacity .35s var(--ease);
+}
+#loadPoster.on{opacity:1}
+.load-glyph{
+  position:relative;width:34px;height:34px;fill:var(--amber);opacity:.92;
+  filter:drop-shadow(0 0 14px rgba(255,176,32,.34));
+}
+.load-card.art .load-glyph{fill:#fff;filter:drop-shadow(0 2px 10px rgba(0,0,0,.75))}
+/* Indeterminate sweep along the bottom edge — the card's own progress hint,
+   which replaces the old free-floating ring. One animated element, not two. */
+.load-sweep{position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(255,255,255,.09);overflow:hidden}
+.load-sweep::after{
+  content:"";position:absolute;top:0;bottom:0;left:0;width:38%;
+  background:linear-gradient(90deg,transparent,var(--amber),transparent);
+  animation:sweep 1.3s var(--ease) infinite;
+}
+@keyframes sweep{0%{transform:translateX(-110%)}100%{transform:translateX(330%)}}
+
+/* The complete title, wrapped as far as it needs to go — never clamped. */
 #loadTitle{
   font-size:clamp(15px,4.6vw,19px);font-weight:600;letter-spacing:-.3px;
-  line-height:1.25;overflow-wrap:break-word;
+  line-height:1.3;overflow-wrap:break-word;word-break:normal;
 }
 #loadMsg{margin-top:7px;font-size:12.5px;color:var(--faint);letter-spacing:.2px}
+
+@media (max-height:430px) and (orientation:landscape){
+  .load-card{width:clamp(150px,27vw,236px);height:clamp(84px,15.19vw,133px);margin-bottom:13px}
+  .load-glyph{width:28px;height:28px}
+  #loadTitle{font-size:clamp(14px,2.6vw,17px)}
+}
 
 /* ============================================================================
    LOCK MODE
@@ -302,9 +408,12 @@ svg{display:block;pointer-events:none}
 #unlockBtn svg{width:22px;height:22px;fill:rgba(255,255,255,.9)}
 #unlockBtn:active{transform:translateY(-50%) scale(.92)}
 
+/* Unlocking brings the controls straight back, so this pill is another centred
+   layer that could land on the play button. It rides the same lift. */
 #lockFlash{
+  --fy:0px;
   position:absolute;left:50%;top:50%;z-index:var(--z-toast);
-  transform:translate(-50%,-50%);
+  transform:translate(-50%,calc(-50% + var(--fy)));
   display:flex;align-items:center;gap:7px;
   padding:7px 14px;border-radius:20px;background:rgba(0,0,0,.22);
   font-size:13px;color:rgba(255,255,255,.88);
@@ -313,11 +422,12 @@ svg{display:block;pointer-events:none}
 }
 #lockFlash svg{width:15px;height:15px;fill:rgba(255,255,255,.88);filter:drop-shadow(0 1px 6px rgba(0,0,0,.8))}
 #lockFlash.go{animation:flash 1.25s var(--ease) forwards}
+#stage.ctl #lockFlash{--fy:calc(0px - var(--lift-level))}
 @keyframes flash{
-  0%{opacity:0;transform:translate(-50%,-50%) scale(.94)}
-  12%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  0%{opacity:0;transform:translate(-50%,calc(-50% + var(--fy))) scale(.94)}
+  12%{opacity:1;transform:translate(-50%,calc(-50% + var(--fy))) scale(1)}
   72%{opacity:1}
-  100%{opacity:0;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,calc(-50% + var(--fy))) scale(1)}
 }
 
 /* ============================================================================
@@ -378,8 +488,12 @@ svg{display:block;pointer-events:none}
 #notice p{font-size:13px;color:var(--dim);line-height:1.6}
 #notice button{margin-top:18px;padding:11px 22px;border-radius:10px;background:var(--amber);color:#000;font-size:14px;font-weight:600}
 
+/* At 26px the toast sat squarely on top of the speed/quality chips whenever the
+   controls were up — and every toast in this player is fired by a control.
+   It now clears the whole bottom bar while they are visible. */
 #toast{
   position:absolute;left:50%;bottom:calc(26px + var(--sb));transform:translateX(-50%);
+  transition:opacity .2s var(--ease),bottom .2s var(--ease);
   z-index:var(--z-toast);
   padding:8px 15px;border-radius:20px;
   background:var(--glass);border:1px solid var(--hairline);
@@ -389,6 +503,7 @@ svg{display:block;pointer-events:none}
   white-space:nowrap;max-width:88vw;overflow:hidden;text-overflow:ellipsis;
 }
 #toast.on{opacity:1}
+#stage.ctl #toast{bottom:calc(96px + var(--sb))}
 
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
 </style>
@@ -436,6 +551,7 @@ svg{display:block;pointer-events:none}
   <div class="hud" id="hudSeek">
     <div id="hudSeekDelta" class="tnum"><svg id="hudSeekIcon"><use href="#i-ff"></use></svg><span id="hudSeekNum">+10s</span></div>
     <div id="hudSeekTime" class="tnum">00:00 / 00:00</div>
+    <div id="hudSeekBar"><div id="hudSeekBarFill"></div></div>
   </div>
 
   <div class="hud" id="hudLevel">
@@ -449,7 +565,6 @@ svg{display:block;pointer-events:none}
 
   <!-- CONTROLS -->
   <div id="controls">
-    <div class="scrim-t"></div>
     <div class="scrim-b"></div>
 
     <div class="topbar">
@@ -474,7 +589,7 @@ svg{display:block;pointer-events:none}
           <div class="tl-buf" id="tlBuf"></div>
           <div class="tl-prog" id="tlProg"></div>
         </div>
-        <div class="tl-thumb" id="tlThumb"></div>
+        <div class="tl-thumb" id="tlThumb"><i class="tl-dot"></i></div>
         <div class="tl-preview tnum" id="tlPreview">00:00</div>
       </div>
 
@@ -492,7 +607,11 @@ svg{display:block;pointer-events:none}
   <!-- CUSTOM LOADING -->
   <div id="loading">
     <div class="load-in">
-      <div class="load-ring"></div>
+      <div class="load-card" id="loadCard">
+        <img id="loadPoster" alt="" decoding="async" fetchpriority="low">
+        <svg class="load-glyph" viewBox="0 0 24 24"><use href="#i-play"></use></svg>
+        <div class="load-sweep"></div>
+      </div>
       <div id="loadTitle">Vishwanath and Sons</div>
       <div id="loadMsg">Preparing playback</div>
     </div>
@@ -558,9 +677,14 @@ const CONFIG = {
     "360p":  ""
   },
 
-  /* Real file sizes in MB, if you know them. Otherwise the player measures
-     Content-Length over the network, and if that is blocked it says nothing
-     rather than inventing a figure. */
+  /* Optional artwork for the loading card. Leave empty and the card draws its
+     own mark — no request, no bytes. Any URL here is fetched once and then
+     served from the WebView's HTTP cache on every later launch. */
+  poster: "",
+
+  /* Real file sizes in MB, if you know them. Otherwise the player measures the
+     true byte length over the network once, caches it, and scales it across the
+     ladder. Anything it did not measure is labelled as an estimate. */
   sizesMB: { "1080p": null, "720p": null, "480p": null, "360p": null },
   measureFileSize: true,
 
@@ -568,9 +692,20 @@ const CONFIG = {
 
   /* ---- Seek ------------------------------------------------------------- */
   seekStep: 10,               // double-tap and the ±10 buttons
-  seekPerScreen: 40,          // seconds per full screen-width of swipe
-  seekMax: 180,               // hard cap for one swipe
-  velocityBoostMax: 0.5,      // up to +50% on a fast flick
+
+  /* Dynamic swipe seeking, MX Player style. Two profiles, chosen by which half
+     of the screen the finger lands on, each with a fine zone near the origin
+     that then accelerates. See seekFromSwipe() for the full reasoning. */
+  swipe: {
+    fineSecs: 10,             // seconds reached at the end of the fine zone
+    leftFine: 0.42,           // fraction of screen width spent on the fine zone
+    leftMax: 60,              // reach at full travel from the left block
+    rightFine: 0.24,
+    rightMax: 300,            // reach at full travel from the right block (5 min)
+    curve: 2.2,               // acceleration exponent past the fine zone
+    velocityBoost: 0.45,      // up to +45% on a fast flick
+    velocityRef: 1.5          // px/ms at which that boost saturates
+  },
 
   /* ---- Gestures --------------------------------------------------------- */
   deadzone: 12,
@@ -590,12 +725,21 @@ const CONFIG = {
   autoplay: false,
   rememberPosition: true,
   minResumeSec: 15,
-  endGuardSec: 12
-};
+  endGuardSec: 12,
+  haptics: true               // 10ms ticks on discrete actions; silently ignored
+};                            // if the host app has no VIBRATE permission
 
 const QUALITY_ORDER = ["1080p", "720p", "480p", "360p"];
 const SPEED_PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const SPEED_MIN = 0.5, SPEED_MAX = 2;
+
+/* Average bitrates (kbps) for a normal streaming H.264 ladder. These are used
+   two ways, and never as a bare invention:
+     · to scale ONE genuinely measured file size across the other renditions,
+       which is the accurate path and the one that runs in practice;
+     · with the real duration, as a last resort when the size of every file is
+       unreachable. Anything derived this way is labelled as an estimate. */
+const BITRATE_KBPS = { "1080p": 2500, "720p": 1300, "480p": 700, "360p": 400 };
 
 
 /* ============================================================================
@@ -613,10 +757,19 @@ function fmtTime(sec){
   return h > 0 ? h + ":" + p(m) + ":" + p(s) : p(m) + ":" + p(s);
 }
 
-function fmtData(mb){
-  if (!isNum(mb) || mb <= 0) return null;
-  return mb >= 1024 ? (mb / 1024 >= 10 ? (mb/1024).toFixed(1) : (mb/1024).toFixed(2)) + " GB"
-                    : Math.round(mb) + " MB";
+/* Data usage is quoted in MB throughout, which is the unit people compare
+   against a mobile data allowance. */
+function fmtMB(mb){
+  if (!isNum(mb) || mb <= 0) return "0 MB";
+  if (mb < 1) return "under 1 MB";
+  return Math.round(mb) + " MB";
+}
+
+/* A swipe of two and a half minutes reads far better as "+2:30" than "+150s" */
+function fmtDelta(sec){
+  const a = Math.abs(Math.round(sec));
+  if (a < 60) return a + "s";
+  return Math.floor(a / 60) + ":" + String(a % 60).padStart(2, "0");
 }
 
 /* Presets stay compact (1x, 1.25x); custom values keep both decimals (1.15x) */
@@ -673,7 +826,8 @@ const video = $("video"), stage = $("stage"), dimEl = $("dim"),
 
 const hudSeek = $("hudSeek"), hudSeekIcon = $("hudSeekIcon"), hudSeekNum = $("hudSeekNum"),
       hudSeekTime = $("hudSeekTime"), hudLevel = $("hudLevel"), hudLevelIcon = $("hudLevelIcon"),
-      hudLevelLabel = $("hudLevelLabel"), hudLevelValue = $("hudLevelValue"), hudLevelFill = $("hudLevelFill");
+      hudLevelLabel = $("hudLevelLabel"), hudLevelValue = $("hudLevelValue"), hudLevelFill = $("hudLevelFill"),
+      hudSeekBarFill = $("hudSeekBarFill");
 
 const timeline = $("timeline"), tlBuf = $("tlBuf"), tlProg = $("tlProg"),
       tlThumb = $("tlThumb"), tlPreview = $("tlPreview");
@@ -735,48 +889,128 @@ function activeQualityKey(){
 }
 
 const measuredMB = Object.create(null);
+const measuring  = Object.create(null);
 
-function knownSizeMB(key){
-  const real = resolveQualityKey(key);
-  if (!real) return null;
-  if (isNum(CONFIG.sizesMB[real]) && CONFIG.sizesMB[real] > 0) return CONFIG.sizesMB[real];
-  if (isNum(measuredMB[real])) return measuredMB[real];
+/* A size we know for certain: either you supplied it, or we read the real byte
+   length off the wire (and cached it across sessions). */
+function exactSizeMB(q){
+  if (isNum(CONFIG.sizesMB[q]) && CONFIG.sizesMB[q] > 0) return CONFIG.sizesMB[q];
+  if (isNum(measuredMB[q]) && measuredMB[q] > 0) return measuredMB[q];
   return null;
 }
 
-function dataLine(key){
-  const real = resolveQualityKey(key);
-  if (!real) return "Not available";
-  const size = knownSizeMB(key);
-  if (size === null) return "Data usage depends on the video stream and your network";
-  const total = fmtData(size), dur = video.duration;
-  if (isNum(dur) && dur > 0 && real === activeQualityKey()){
-    const left = size * (1 - clamp(video.currentTime / dur, 0, 1));
-    const leftTxt = fmtData(left);
-    if (leftTxt && left < size * 0.98) return "File is " + total + " · about " + leftTxt + " left from here";
+/* Any rendition whose true size we hold, used as the anchor for the others. */
+function sizeAnchor(){
+  for (let i = 0; i < QUALITY_ORDER.length; i++){
+    const q = QUALITY_ORDER[i], mb = exactSizeMB(q);
+    if (mb !== null) return { key:q, mb:mb };
   }
-  return "File is " + total;
+  return null;
 }
 
-/* Real Content-Length or nothing. Never a computed guess. */
+/* Data usage for one rendition -> { mb, exact } or null.
+   Order of preference: measured · scaled from a measured sibling · modelled
+   from the real duration. Only the first is reported as fact. */
+function sizeInfo(q){
+  const exact = exactSizeMB(q);
+  if (exact !== null) return { mb:exact, exact:true };
+
+  const anchor = sizeAnchor();
+  if (anchor && BITRATE_KBPS[q] && BITRATE_KBPS[anchor.key]){
+    return { mb: anchor.mb * (BITRATE_KBPS[q] / BITRATE_KBPS[anchor.key]), exact:false };
+  }
+
+  const dur = video.duration;
+  if (isNum(dur) && dur > 0 && BITRATE_KBPS[q]){
+    /* kbps · seconds -> kilobits -> bytes -> MiB */
+    return { mb: BITRATE_KBPS[q] * dur / 8388.608, exact:false };
+  }
+  return null;
+}
+
+/* The line under each quality in the sheet. Every rendition gets a number, and
+   the wording always makes clear whether it is measured or estimated. */
+function dataLine(q){
+  const configured = isUsableUrl(CONFIG.sources[q]);
+  const info = sizeInfo(q);
+
+  if (!info) return configured ? "Size not known yet" : "Not added yet";
+  const total = fmtMB(info.mb);
+
+  if (!configured) return "Not added yet · about " + total + " estimated";
+  if (!info.exact) return "About " + total + " estimated for the full movie";
+
+  const dur = video.duration;
+  if (isNum(dur) && dur > 0 && q === activeQualityKey()){
+    const left = info.mb * (1 - clamp(video.currentTime / dur, 0, 1));
+    if (left < info.mb * 0.98) return total + " total · about " + fmtMB(left) + " left from here";
+  }
+  return total + " for the full movie";
+}
+
+function autoDataLine(){
+  const real = resolveQualityKey("auto");
+  if (!real) return "No source configured";
+  const info = sizeInfo(real);
+  const suffix = info ? " · " + (info.exact ? "" : "about ") + fmtMB(info.mb) : "";
+  return "Best available — currently " + real + suffix;
+}
+
+function refreshQualitySheet(){
+  if (state.sheetOpen && sheet.dataset.kind === "quality") renderQualitySheet();
+}
+
+/* Measure the true byte length once per URL, then remember it forever.
+   HEAD first; if the host blocks it or omits Content-Length, a one-byte Range
+   request reads the total out of Content-Range. Either way the cost is a few
+   hundred bytes, once, and never again on any later launch. */
 function measureSize(key){
   if (!CONFIG.measureFileSize) return;
   const real = resolveQualityKey(key);
-  if (!real || knownSizeMB(real) !== null) return;
-  if (typeof fetch !== "function" || typeof AbortController !== "function") return;
+  if (!real || exactSizeMB(real) !== null || measuring[real]) return;
 
-  const ctrl = new AbortController();
-  const bail = setTimeout(() => ctrl.abort(), 5000);
-  fetch(CONFIG.sources[real].trim(), { method:"HEAD", signal:ctrl.signal })
-    .then(res => {
-      clearTimeout(bail);
-      const len = parseInt(res.headers.get("content-length") || "", 10);
-      if (isNum(len) && len > 0){
-        measuredMB[real] = len / (1024 * 1024);
-        if (state.sheetOpen && sheet.dataset.kind === "quality") renderQualitySheet();
-      }
-    })
-    .catch(() => clearTimeout(bail));
+  const url = CONFIG.sources[real].trim();
+  const cacheKey = "size:" + videoKey(url).slice(4);
+
+  const cached = Store.get(cacheKey, null);
+  if (isNum(cached) && cached > 0){ measuredMB[real] = cached; refreshQualitySheet(); return; }
+
+  if (typeof fetch !== "function" || typeof AbortController !== "function") return;
+  measuring[real] = true;
+
+  function ask(init, read){
+    const ctrl = new AbortController();
+    const bail = setTimeout(() => ctrl.abort(), 6000);
+    init.signal = ctrl.signal;
+    return fetch(url, init)
+      .then(res => { clearTimeout(bail); return res.ok || res.status === 206 ? read(res) : null; })
+      .catch(() => { clearTimeout(bail); return null; });
+  }
+
+  ask({ method:"HEAD" }, res => {
+    const len = parseInt(res.headers.get("content-length") || "", 10);
+    return isNum(len) && len > 0 ? len / 1048576 : null;
+  })
+  .then(mb => mb || ask({ method:"GET", headers:{ Range:"bytes=0-0" } }, res => {
+    const m = /\/\s*(\d+)\s*$/.exec(res.headers.get("content-range") || "");
+    return m ? parseInt(m[1], 10) / 1048576 : null;
+  }))
+  .then(mb => {
+    measuring[real] = false;
+    if (isNum(mb) && mb > 0){
+      measuredMB[real] = mb;
+      Store.set(cacheKey, mb);
+      refreshQualitySheet();
+    }
+  });
+}
+
+/* Measure every configured rendition we still don't know — but only when the
+   user actually opens the quality sheet, never on load. */
+function measureConfigured(){
+  for (let i = 0; i < QUALITY_ORDER.length; i++){
+    if (isUsableUrl(CONFIG.sources[QUALITY_ORDER[i]])) measureSize(QUALITY_ORDER[i]);
+  }
 }
 
 
@@ -840,6 +1074,11 @@ function applySource(url, opts){
     tDur.textContent = fmtTime(dur);
     timeline.setAttribute("aria-valuemax", isNum(dur) ? Math.floor(dur) : 0);
     hideNotice();
+    /* The repaint caches hold values measured against the previous file. Clear
+       them or a switch between two files of different length can skip the very
+       write that would have corrected the bar. */
+    lastProg = -1; lastBuf = ""; lastCur = "";
+    measureTimeline();
     paint();
 
     if (opts.play) safePlay();
@@ -906,6 +1145,19 @@ function syncQualityChip(){
  * Separate from the buffering spinner: this is the full black cinematic layer
  * that hides the WebView's own video chrome until a frame is decodable.
  * ==========================================================================*/
+/* The preview card. With no CONFIG.poster it draws its own mark and costs
+   nothing — no request, no decode, no bytes. With one, the image is fetched at
+   low priority so it can never compete with the video for a scarce connection,
+   and any failure silently leaves the built-in mark in place. */
+function initPreview(){
+  const url = (CONFIG.poster || "").trim();
+  if (!url) return;
+  const img = $("loadPoster"), card = $("loadCard");
+  img.addEventListener("load", () => { img.classList.add("on"); card.classList.add("art"); }, { once:true });
+  img.addEventListener("error", () => { img.removeAttribute("src"); }, { once:true });
+  img.src = url;
+}
+
 function showLoading(msg){
   state.ready = false;
   $("loadMsg").textContent = msg || "Preparing playback";
@@ -993,50 +1245,82 @@ function applySpeed(rate, silent){
  * ==========================================================================*/
 let paintQueued = false;
 
+/* The track geometry is read once and reused, rather than on every frame of a
+   scrub. getBoundingClientRect() forces a synchronous layout, and calling it
+   inside a pointermove handler is the classic way to make a drag feel sticky
+   on a mid-range Android device. */
+let tlLeft = 0, tlW = 0;
+function measureTimeline(){
+  const r = timeline.getBoundingClientRect();
+  tlLeft = r.left; tlW = r.width;
+}
+
+/* Last values written, so a repaint that changes nothing touches no DOM. */
+let lastProg = -1, lastBuf = "", lastCur = "";
+
 function paint(){
   paintQueued = false;
   const dur = video.duration;
   if (!isNum(dur) || dur <= 0) return;
+  if (tlW <= 0) measureTimeline();
 
   if (!state.scrubbing){
     const p = clamp(video.currentTime / dur, 0, 1);
-    tlProg.style.transform = "scaleX(" + p + ")";
-    tlThumb.style.left = (p * 100) + "%";
-    tCur.textContent = fmtTime(video.currentTime);
-    timeline.setAttribute("aria-valuenow", Math.floor(video.currentTime));
+    if (p !== lastProg){
+      lastProg = p;
+      tlProg.style.transform = "scaleX(" + p + ")";
+      tlThumb.style.transform = "translate3d(" + (p * tlW).toFixed(1) + "px,0,0)";
+    }
+    const cur = fmtTime(video.currentTime);
+    if (cur !== lastCur){
+      lastCur = cur;
+      tCur.textContent = cur;
+      timeline.setAttribute("aria-valuenow", Math.floor(video.currentTime));
+    }
   }
 
-  let end = 0;
+  /* Buffered range, YouTube style: the soft white band shows the span that is
+     actually downloaded AROUND the playhead — not a bar that always starts at
+     zero. After a seek into fresh territory the browser buffers, say, 1:20:00
+     to 1:20:40; painting 0 to 1:20:40 as "loaded" would have been a lie. */
+  let bs = 0, be = 0;
   try{
     const b = video.buffered, t = video.currentTime;
     for (let i = 0; i < b.length; i++){
-      if (b.start(i) <= t + 0.25 && b.end(i) > end) end = b.end(i);
+      const s = b.start(i), e = b.end(i);
+      if (s <= t + 0.25 && e >= t - 0.25){ bs = s; be = e; break; }
     }
-    if (!end && b.length) end = b.end(b.length - 1);
+    if (be <= bs && b.length){ bs = b.start(b.length - 1); be = b.end(b.length - 1); }
   }catch(e){}
-  tlBuf.style.transform = "scaleX(" + clamp(end / dur, 0, 1) + ")";
+
+  const b0 = clamp(bs / dur, 0, 1), b1 = clamp(be / dur, 0, 1);
+  const bufCss = "translateX(" + (b0 * 100).toFixed(2) + "%) scaleX(" + Math.max(0, b1 - b0).toFixed(4) + ")";
+  if (bufCss !== lastBuf){ lastBuf = bufCss; tlBuf.style.transform = bufCss; }
 }
 
 function queuePaint(){ if (!paintQueued){ paintQueued = true; requestAnimationFrame(paint); } }
 
 function ratioAt(clientX){
-  const r = timeline.getBoundingClientRect();
-  return r.width <= 0 ? 0 : clamp((clientX - r.left) / r.width, 0, 1);
+  return tlW <= 0 ? 0 : clamp((clientX - tlLeft) / tlW, 0, 1);
 }
 
 function drawScrub(ratio){
   tlProg.style.transform = "scaleX(" + ratio + ")";
-  tlThumb.style.left = (ratio * 100) + "%";
+  tlThumb.style.transform = "translate3d(" + (ratio * tlW).toFixed(1) + "px,0,0)";
+  lastProg = -1;
   const t = ratio * (video.duration || 0);
-  tCur.textContent = fmtTime(t);
-  tlPreview.textContent = fmtTime(t);
-  tlPreview.style.left = clamp(ratio * 100, 8, 92) + "%";
+  lastCur = fmtTime(t);            // cache mirrors what is actually on screen
+  tCur.textContent = lastCur;
+  tlPreview.textContent = lastCur;
+  tlPreview.style.transform =
+    "translate3d(" + clamp(ratio * tlW, tlW * 0.08, tlW * 0.92).toFixed(1) + "px,0,0) translateX(-50%)";
 }
 
 let scrubRatio = 0, scrubQueued = false;
 
 timeline.addEventListener("pointerdown", e => {
   if (state.locked || !isNum(video.duration) || video.duration <= 0) return;
+  measureTimeline();
   state.scrubbing = true;
   timeline.classList.add("scrub");
   try { timeline.setPointerCapture(e.pointerId); } catch(err){}
@@ -1073,18 +1357,30 @@ timeline.addEventListener("lostpointercapture", endScrub);
 /* ============================================================================
  * 10. CONTROLS VISIBILITY
  * ==========================================================================*/
+/* Single writer for "are the controls on screen". The `ctl` class on the stage
+   is what lifts the spinner, both HUDs, the lock flash and the toast clear of
+   the transport row, so it must never be set anywhere else — one forgotten
+   toggle and the centred layers collide with the play button again. */
+function setControls(on){
+  state.controlsOn = on;
+  controls.classList.toggle("on", on);
+  stage.classList.toggle("ctl", on);
+  /* Cheapest possible place to keep the cached track geometry honest: the
+     timeline only matters while it is on screen, and WebView insets can change
+     without ever firing a resize. */
+  if (on) measureTimeline();
+}
+
 function showControls(sticky){
   if (state.locked) return;
-  state.controlsOn = true;
-  controls.classList.add("on");
+  setControls(true);
   Timers.clear("hideControls");
   if (!sticky) scheduleHide();
 }
 
 function hideControls(){
   if (state.scrubbing || state.sheetOpen || state.noticeOpen) return;
-  state.controlsOn = false;
-  controls.classList.remove("on");
+  setControls(false);
 }
 
 function scheduleHide(){
@@ -1102,31 +1398,80 @@ function toggleControls(){ state.controlsOn ? hideControls() : showControls(); }
  *   vertical L -> brightness      vertical R -> volume
  *   tap -> controls               double tap -> ±10s / play-pause
  * ==========================================================================*/
-const G = { live:false, id:null, x0:0, y0:0, t0:0, axis:null, zone:null,
+const G = { live:false, id:null, x0:0, y0:0, t0:0, axis:null, zone:null, left:false,
             base:0, startTime:0, delta:0, target:0, moved:false };
+
+/* touchmove can fire several times per frame on a 120Hz panel. Everything the
+   gesture wants to draw is parked here and flushed once per frame instead, so
+   a long drag writes to the DOM 60 times a second, not 300. */
+const GFrame = { queued:false, seek:false, level:null };
+
+function flushGesture(){
+  GFrame.queued = false;
+  if (GFrame.seek){ GFrame.seek = false; showSeekHud(G.delta, G.target); }
+  if (GFrame.level){
+    const L = GFrame.level; GFrame.level = null;
+    if (L.zone === "volume") setVolume(L.v, true); else setBrightness(L.v, true);
+  }
+}
+function queueGesture(){
+  if (!GFrame.queued){ GFrame.queued = true; requestAnimationFrame(flushGesture); }
+}
 
 function gesturesAllowed(){
   return !state.locked && !state.scrubbing && !state.sheetOpen && !state.noticeOpen && state.ready;
 }
 
 /* --------------------------------------------------------------------------
- * Dynamic seek: distance maps to time at roughly CONFIG.seekPerScreen seconds
- * per screen width, so the relationship stays proportional and predictable.
- * On a 400px-wide phone that lands at about:
- *   15px ≈ 1s · 40px ≈ 4s · 100px ≈ 10s · 200px ≈ 20s · 340px ≈ 34s
- * A fast flick adds up to +50%, and everything is capped at CONFIG.seekMax.
+ * DYNAMIC SWIPE SEEKING — MX Player style
+ *
+ * The screen is split into two functional blocks and the block your finger
+ * LANDS in picks the profile for that whole gesture; the direction you then
+ * drag picks the sign, which is what makes it feel physical rather than modal:
+ *
+ *   Left block   fine profile   ~1s per 15px, 10s at 42% of the width,
+ *                               easing out to 60s at full travel.
+ *   Right block  wide profile   ~1s per 9px near the origin, then ramping
+ *                               hard to 5 minutes at full travel.
+ *
+ * Within a profile the curve is linear through the fine zone — so the first
+ * part of every swipe still steps in single seconds, exactly as before — and
+ * then picks up a power curve past it. That is the "transition after the
+ * block's maximum range": precision where your thumb starts, reach where it
+ * ends, with no cliff between the two.
+ *
+ * Measured on a 400px-wide phone at negligible flick speed. Right block,
+ * dragging right (forward):
+ *   10px 1s · 50px 5s · 96px 10s · 200px 37s · 320px 2:38 · 400px 5:00
+ * Left block, dragging left (backward):
+ *   15px 1s · 84px 5s · 168px 10s · 300px 24s · 400px 1:00
+ * A fast flick scales those by up to +45%.
+ *
+ * Nothing is committed until you lift your finger, so a long exploratory drag
+ * costs no bandwidth at all — only the final position is ever fetched.
  * ------------------------------------------------------------------------*/
-function seekFromSwipe(dx, elapsedMs){
+function seekFromSwipe(dx, elapsedMs, fromLeftBlock){
+  const S = CONFIG.swipe;
   const w = Math.max(1, window.innerWidth);
-  const frac = Math.abs(dx) / w;
+  const frac = Math.min(Math.abs(dx) / w, 1);
 
-  let secs = frac * CONFIG.seekPerScreen;
+  const fine = fromLeftBlock ? S.leftFine : S.rightFine;
+  const max  = fromLeftBlock ? S.leftMax  : S.rightMax;
 
-  const vel = Math.abs(dx) / Math.max(16, elapsedMs);        // px per ms
-  secs *= 1 + clamp((vel - 0.5) / 2.5, 0, 1) * CONFIG.velocityBoostMax;
+  let secs;
+  if (frac <= fine){
+    secs = frac / fine * S.fineSecs;                      // single-second control
+  } else {
+    const past = (frac - fine) / (1 - fine);              // 0 -> 1 beyond the zone
+    secs = S.fineSecs + Math.pow(past, S.curve) * (max - S.fineSecs);
+  }
 
-  secs = Math.min(secs, CONFIG.seekMax);
-  if (secs < 1) secs = 1;                                     // smallest useful step
+  /* A quick flick reaches further than a slow drag of the same length. */
+  const vel = Math.abs(dx) / Math.max(16, elapsedMs);     // px per ms
+  secs *= 1 + clamp(vel / S.velocityRef, 0, 1) * S.velocityBoost;
+
+  secs = Math.min(secs, max * (1 + S.velocityBoost));
+  if (secs < 1) secs = 1;                                 // smallest useful step
   return Math.round(secs) * (dx < 0 ? -1 : 1);
 }
 
@@ -1139,7 +1484,11 @@ gestures.addEventListener("touchstart", e => {
   G.x0 = t.clientX; G.y0 = t.clientY; G.t0 = Date.now();
   G.axis = null; G.moved = false; G.delta = 0;
   G.startTime = video.currentTime;
-  G.zone = t.clientX < w / 2 ? "brightness" : "volume";
+
+  /* One split, read once, driving both axes: the left block is fine seeking
+     and brightness, the right block is wide seeking and volume. */
+  G.left = t.clientX < w / 2;
+  G.zone = G.left ? "brightness" : "volume";
 }, { passive:true });
 
 gestures.addEventListener("touchmove", e => {
@@ -1155,6 +1504,7 @@ gestures.addEventListener("touchmove", e => {
     G.moved = true;
     G.base = G.zone === "volume" ? state.volume : state.brightness;
     state.gesture = G.axis;
+    if (G.axis === "y" && G.zone === "brightness") dimEl.classList.add("live");
     hideControls();
   }
 
@@ -1165,17 +1515,18 @@ gestures.addEventListener("touchmove", e => {
   if (G.axis === "x"){
     const dur = video.duration;
     if (!isNum(dur) || dur <= 0) return;
-    const d = seekFromSwipe(dx, Date.now() - G.t0);
+    const d = seekFromSwipe(dx, Date.now() - G.t0, G.left);
     if (d !== G.delta){
       G.delta = d;
       G.target = clamp(G.startTime + d, 0, dur - 0.05);
       state.seekTarget = G.target;
-      showSeekHud(d, G.target);          // live feedback, every step
+      GFrame.seek = true;                // live feedback, coalesced to one frame
+      queueGesture();
     }
   } else {
     const span = window.innerHeight * CONFIG.verticalTravel;
-    const v = clamp(G.base - (dy / span), 0, 1);
-    if (G.zone === "volume") setVolume(v, true); else setBrightness(v, true);
+    GFrame.level = { zone:G.zone, v:clamp(G.base - (dy / span), 0, 1) };
+    queueGesture();
   }
 }, { passive:false });
 
@@ -1183,8 +1534,12 @@ function endGesture(e){
   if (!G.live) return;
   G.live = false;
   state.gesture = null;
+  if (GFrame.queued) flushGesture();          // never lose the last frame
+  dimEl.classList.remove("live");
 
   if (G.axis === "x"){
+    /* The one and only seek of the whole gesture. Everything before this was
+       drawn on screen and cost nothing on the network. */
     if (G.delta !== 0 && isNum(video.duration)){
       state.spinnerBlockUntil = Date.now() + CONFIG.skipSpinnerGrace;
       try { video.currentTime = G.target; } catch(err){}
@@ -1199,7 +1554,11 @@ function endGesture(e){
   G.axis = null;
 }
 gestures.addEventListener("touchend", endGesture, { passive:true });
-gestures.addEventListener("touchcancel", () => { G.live = false; G.axis = null; state.gesture = null; }, { passive:true });
+gestures.addEventListener("touchcancel", () => {
+  G.live = false; G.axis = null; state.gesture = null;
+  GFrame.seek = false; GFrame.level = null;
+  dimEl.classList.remove("live");
+}, { passive:true });
 
 /* Mouse fallback only — touch devices emit a synthetic click after touchend,
    which would double-toggle the controls. */
@@ -1215,8 +1574,8 @@ function handleTap(touch){
   if (isDouble){
     Timers.clear("singleTap");
     state.lastTapAt = 0;
-    if (x < w * 0.35){ skip(-CONFIG.seekStep); flashRipple(rippleL); }
-    else if (x > w * 0.65){ skip(CONFIG.seekStep); flashRipple(rippleR); }
+    if (x < w * 0.35){ skip(-CONFIG.seekStep); flashRipple(rippleL); tick(10); }
+    else if (x > w * 0.65){ skip(CONFIG.seekStep); flashRipple(rippleR); tick(10); }
     else togglePlay();
     return;
   }
@@ -1230,6 +1589,13 @@ function flashRipple(el){
   el.classList.remove("go");
   void el.offsetWidth;
   el.classList.add("go");
+}
+
+/* A short tick on discrete actions, the way a native player feels. Does nothing
+   at all if the host app has no VIBRATE permission, so it can never fail. */
+function tick(ms){
+  if (!CONFIG.haptics || typeof navigator.vibrate !== "function") return;
+  try { navigator.vibrate(ms); } catch(e){}
 }
 
 
@@ -1305,8 +1671,10 @@ function setNight(on, announce){
 function showSeekHud(delta, target){
   hudLevel.classList.remove("on");
   hudSeekIcon.firstElementChild.setAttribute("href", delta < 0 ? "#i-rew" : "#i-ff");
-  hudSeekNum.textContent = (delta >= 0 ? "+" : "\u2212") + Math.abs(Math.round(delta)) + "s";
-  hudSeekTime.textContent = fmtTime(target) + " / " + fmtTime(video.duration || 0);
+  hudSeekNum.textContent = (delta >= 0 ? "+" : "\u2212") + fmtDelta(delta);
+  const dur = video.duration || 0;
+  hudSeekTime.textContent = fmtTime(target) + " / " + fmtTime(dur);
+  hudSeekBarFill.style.transform = "scaleX(" + (dur > 0 ? clamp(target / dur, 0, 1) : 0) + ")";
   hudSeek.classList.add("on");
   Timers.clear("hud");
 }
@@ -1360,8 +1728,7 @@ function lockScreen(){
   Timers.clear("hideControls");
   Timers.clear("singleTap");
   Timers.clear("toast");
-  state.controlsOn = false;
-  controls.classList.remove("on");
+  setControls(false);
   hudSeek.classList.remove("on");
   hudLevel.classList.remove("on");
   toastEl.classList.remove("on");
@@ -1369,6 +1736,7 @@ function lockScreen(){
   lockLayer.classList.add("on");
   unlockBtn.classList.remove("on");
   Timers.clear("unlockHide");
+  tick(14);
   flashLock("Screen locked", "#i-lock");
 }
 
@@ -1380,8 +1748,12 @@ function unlockScreen(){
   Timers.clear("unlockHide");
   Timers.clear("lockFlash");
   lockFlash.classList.remove("go");
-  flashLock("Unlocked", "#i-unlock");
+  tick(10);
+  /* Controls first, flash second. The flash keyframes read --fy live, so
+     starting the animation before the stage gains `ctl` would make the pill
+     jump upward mid-flight. */
   showControls();
+  flashLock("Unlocked", "#i-unlock");
 }
 
 function flashLock(text, icon){
@@ -1584,25 +1956,33 @@ function renderCustomSpeedSheet(){
 
 /* ---- Quality ------------------------------------------------------------ */
 function renderQualitySheet(){
+  /* Opening the sheet is the signal that the numbers are actually wanted, so
+     this is where any unmeasured file gets its one lookup. Results are cached
+     across sessions, so in practice this fires once in the app's lifetime. */
+  measureConfigured();
+
   const avail = availableQualities();
-  const autoReal = resolveQualityKey("auto");
+  const anchor = sizeAnchor();
   const note = avail.length <= 1
     ? "Only one encoded file is configured, so there is nothing to switch between yet. Add 720p, 480p or 360p URLs to CONFIG.sources and they appear here automatically."
     : "Switching loads a different file and keeps your position, speed and volume.";
+  const sizeNote = anchor
+    ? " Sizes are measured from the " + anchor.key + " file; the rest are scaled estimates."
+    : " Sizes are estimated from the running time.";
 
-  openSheet("quality", "Video quality", note, body => {
+  openSheet("quality", "Video quality", note + sizeNote, body => {
     body.appendChild(optionRow({
       label: "Auto",
-      meta: autoReal ? "Best available — currently " + autoReal : "No source configured",
+      meta: autoDataLine(),
       selected: state.quality === "auto",
-      disabled: !autoReal,
+      disabled: !resolveQualityKey("auto"),
       onPick(){ selectQuality("auto"); closeSheet(); }
     }));
     QUALITY_ORDER.forEach(q => {
       const ok = isUsableUrl(CONFIG.sources[q]);
       body.appendChild(optionRow({
         label: q,
-        meta: ok ? dataLine(q) : "Not available",
+        meta: dataLine(q),            // every rendition carries a data figure
         selected: state.quality === q,
         disabled: !ok,
         onPick(){ selectQuality(q); closeSheet(); }
@@ -1668,12 +2048,10 @@ video.addEventListener("play",  () => { syncPlayIcon(); scheduleHide(); });
 video.addEventListener("pause", () => { syncPlayIcon(); savePosition(); showControls(true); });
 video.addEventListener("ended", () => { syncPlayIcon(); showControls(true); clearPosition(); });
 
-video.addEventListener("waiting", () => showSpinner(true));
-video.addEventListener("stalled", () => showSpinner(true));
-video.addEventListener("playing", () => showSpinner(false));
-video.addEventListener("canplay", () => showSpinner(false));
-video.addEventListener("canplaythrough", () => showSpinner(false));
-video.addEventListener("loadeddata", () => showSpinner(false));
+const spinOn  = () => showSpinner(true);
+const spinOff = () => showSpinner(false);
+["waiting","stalled"].forEach(ev => video.addEventListener(ev, spinOn));
+["playing","canplay","canplaythrough","loadeddata"].forEach(ev => video.addEventListener(ev, spinOff));
 
 /* A seek only earns a spinner if it genuinely drags on */
 video.addEventListener("seeking", () => { Timers.set("seekSpin", () => showSpinner(true), 700); });
@@ -1771,13 +2149,21 @@ window.addEventListener("pagehide", () => {
   bridgeBrightness(state.brightness);
 });
 
+/* Anything that can change the layout has to refresh the cached track geometry,
+   or the thumb lands in the wrong place and scrubbing reads the wrong ratio. */
 function onViewportChange(){
   G.live = false; G.axis = null; state.gesture = null;
+  GFrame.seek = false; GFrame.level = null;
+  dimEl.classList.remove("live");
   if (state.scrubbing) endScrub();
+  measureTimeline();
+  lastProg = -1; lastBuf = ""; lastCur = "";
   queuePaint();
 }
 window.addEventListener("orientationchange", () => setTimeout(onViewportChange, 220));
 window.addEventListener("resize", onViewportChange);
+document.addEventListener("fullscreenchange", () => setTimeout(onViewportChange, 120));
+document.addEventListener("webkitfullscreenchange", () => setTimeout(onViewportChange, 120));
 
 
 /* ============================================================================
@@ -1834,16 +2220,20 @@ document.addEventListener("keydown", e => {
     ? savedQuality : CONFIG.defaultQuality;
   if (!resolveQualityKey(state.quality)) state.quality = "auto";
 
+  /* The complete title, unabbreviated, everywhere it appears. */
   $("tTitle").textContent = CONFIG.title;
   $("tSub").textContent = CONFIG.subtitle;
   $("loadTitle").textContent = CONFIG.title;
+  $("tTitle").setAttribute("title", CONFIG.title);
   document.title = CONFIG.title;
 
+  initPreview();
   lblSpeed.textContent = fmtSpeed(state.speed);
   syncQualityChip();
   syncPlayIcon();
   syncFsIcon();
   showControls(true);
+  measureTimeline();
 
   loadInitial();
 })();
