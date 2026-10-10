@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AIROBICS GYM | Strength, Aerobics & Personal Training</title>
+<meta name="description" content="AIROBICS GYM – strength training, aerobics, personal training and functional fitness. Demo website: enquire about memberships and programs.">
+<meta property="og:title" content="AIROBICS GYM – Forge your strongest self">
+<meta property="og:description" content="Strength, aerobics and coaching under one roof. Demo website.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000'/%3E%3Cpath d='M6 26 16 5l10 21h-5l-5-11-5 11z' fill='%23ff0'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bk:#000;--d1:#080808;--d2:#101010;--ch:#151515;--y:#FFFF00;--w:#fff;--sw:#F2F2F2;--mut:#A6A6A6;--bd:#262626;--hf:'Space Grotesk','Arial Narrow',Arial,sans-serif;--bf:Inter,system-ui,Arial,sans-serif;--ease:cubic-bezier(.2,.7,.2,1);--pad:clamp(20px,5vw,72px)}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth;scroll-padding-top:72px;color-scheme:dark;background:#000;-webkit-text-size-adjust:100%}
+body{background:var(--bk);color:var(--sw);font:400 16px/1.6 var(--bf);overflow-x:hidden;padding-bottom:env(safe-area-inset-bottom,0)}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--y);outline-offset:3px}
+.wrap{max-width:1360px;margin:0 auto;padding:0 var(--pad)}
+section{padding:clamp(72px,10vw,140px) 0;position:relative}
+h1,h2,h3{font-family:var(--hf);text-transform:uppercase;line-height:.95;letter-spacing:-.025em;font-weight:700}
+h2{font-size:clamp(2.2rem,6vw,4.6rem)}
+.y{color:var(--y)}
+.lead{color:var(--mut);max-width:52ch}
+.sh{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;flex-wrap:wrap;margin-bottom:clamp(36px,5vw,64px);border-top:1px solid var(--bd);padding-top:24px}
+.sh p{max-width:40ch;color:var(--mut)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 28px;font:700 .8rem var(--hf);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--bd);background:var(--ch);cursor:pointer;transition:transform .2s var(--ease),background .2s,color .2s,border-color .2s}
+.btn:hover{border-color:var(--y);color:var(--y)}.btn:active{transform:scale(.97)}
+.btn.p{background:var(--y);color:#000;border-color:var(--y)}.btn.p:hover{background:#fff;border-color:#fff;color:#000}
+.btn.l{box-shadow:inset 4px 0 0 var(--y)}
+/* nav */
+header{position:fixed;inset:0 0 auto;z-index:50;transition:background .3s,border-color .3s;border-bottom:1px solid transparent;padding-top:env(safe-area-inset-top,0)}
+header.s,header.o{background:rgba(0,0,0,.94);border-color:var(--bd)}
+.nv{display:flex;align-items:center;justify-content:space-between;height:72px}
+.logo{font:700 1.3rem var(--hf);letter-spacing:-.02em;display:flex;align-items:center;gap:10px}
+.logo svg{width:26px;height:26px}.logo b{color:var(--y)}
+.links{display:flex;gap:34px}
+.links a{font:500 .72rem var(--hf);letter-spacing:.16em;text-transform:uppercase;color:var(--mut);padding:8px 0;position:relative;transition:color .2s}
+.links a::after{content:"";position:absolute;left:0;right:100%;bottom:0;height:2px;background:var(--y);transition:right .3s var(--ease)}
+.links a:hover,.links a.on{color:#fff}.links a:hover::after,.links a.on::after{right:0}
+.nv .btn{min-height:44px;padding:0 22px}
+.bg{display:none;width:44px;height:44px;background:none;border:1px solid var(--bd);cursor:pointer;position:relative}
+.bg i,.bg i::before{position:absolute;left:11px;width:20px;height:2px;background:#fff;transition:transform .3s var(--ease)}
+.bg i{top:21px}.bg i::before{content:"";left:0;top:-6px}
+header.o .bg i{transform:rotate(45deg)}header.o .bg i::before{transform:translateY(6px) rotate(-90deg)}
+@media(max-width:960px){.links{position:fixed;inset:72px 0 auto;background:#000;flex-direction:column;gap:0;padding:8px var(--pad) 28px;border-bottom:1px solid var(--bd);transform:translateY(-12px);opacity:0;visibility:hidden;transition:.3s var(--ease)}
+header.o .links{transform:none;opacity:1;visibility:visible}
+.links a{font-size:1.4rem;padding:16px 0;border-bottom:1px solid var(--bd);color:#fff}.links a::after{display:none}.links a.on{color:var(--y)}
+.bg{display:block}.nv .btn{display:none}.nv .m{margin-left:auto;margin-right:12px;display:inline-flex}}
+.nv .m{display:none}
+/* hero */
+#home{min-height:100svh;display:flex;align-items:center;padding:110px 0 70px;overflow:hidden;background:radial-gradient(ellipse 60% 70% at 78% 45%,#1d1d1d 0%,#000 70%)}
+#home .photo{position:absolute;inset:0;background-size:cover;background-position:70% center;opacity:.55}
+.ghost{position:absolute;left:-2vw;bottom:-4vw;font:700 clamp(9rem,30vw,30rem)/.8 var(--hf);color:transparent;-webkit-text-stroke:1px #1c1c1c;pointer-events:none;user-select:none}
+.art{position:absolute;right:-8%;top:50%;width:min(62vw,860px);transform:translateY(-50%);opacity:.95}
+.hero{position:relative;z-index:2;max-width:760px}
+.eb{display:flex;align-items:center;gap:14px;font:500 .78rem var(--hf);letter-spacing:.2em;text-transform:uppercase;margin-bottom:26px}
+.eb::before{content:"";width:44px;height:2px;background:var(--y)}
+h1{font-size:clamp(3.1rem,10.5vw,8.6rem);line-height:.9;letter-spacing:-.035em}
+h1 span{display:block}h1 .ol{color:transparent;-webkit-text-stroke:2px #fff}
+.hero p{margin:30px 0 38px;font-size:clamp(1rem,1.5vw,1.2rem);color:var(--mut);max-width:42ch}
+.cta{display:flex;gap:14px;flex-wrap:wrap}
+.facts{display:flex;gap:clamp(20px,4vw,48px);flex-wrap:wrap;margin-top:56px;padding-top:22px;border-top:1px solid var(--bd);max-width:560px}
+.facts div{font:700 1.15rem var(--hf);text-transform:uppercase;line-height:1.1}.facts small{display:block;font:400 .72rem var(--bf);color:var(--mut);letter-spacing:.06em;text-transform:none;margin-top:4px}
+.sc{position:absolute;right:var(--pad);bottom:40px;writing-mode:vertical-rl;font:500 .68rem var(--hf);letter-spacing:.3em;color:var(--mut);display:flex;align-items:center;gap:14px;z-index:2}
+.sc::after{content:"";width:1px;height:60px;background:linear-gradient(var(--y),transparent)}
+@media(max-width:700px){.art{width:150vw;right:-55%;top:30%;opacity:.35}.sc{display:none}.cta .btn{flex:1 1 100%}#home{align-items:flex-end}.hero p{margin:22px 0 28px}.facts{margin-top:36px}}
+.ld{opacity:0;transform:translateY(26px);animation:in .9s var(--ease) forwards}
+@keyframes in{to{opacity:1;transform:none}}
+/* strip */
+.strip{padding:0;border-block:1px solid var(--bd);background:var(--d1)}
+.strip .wrap{display:grid;grid-template-columns:repeat(4,1fr)}
+.strip div{padding:34px 24px;border-left:1px solid var(--bd)}.strip div:first-child{border:0;padding-left:0}
+.strip h3{font-size:1.25rem;margin-bottom:8px}.strip h3::before{content:"";display:block;width:28px;height:3px;background:var(--y);margin-bottom:16px}
+.strip p{font-size:.9rem;color:var(--mut);line-height:1.5}
+@media(max-width:800px){.strip .wrap{grid-template-columns:1fr 1fr}.strip div:nth-child(3){border-left:0;padding-left:0}.strip div:nth-child(n+3){border-top:1px solid var(--bd)}.strip div:nth-child(odd){padding-left:0}}
+/* about */
+.ab{display:grid;grid-template-columns:1.1fr 1fr;gap:clamp(32px,6vw,96px);align-items:center}
+.ab h2{font-size:clamp(2.6rem,7vw,6rem)}.ab p{margin:26px 0 34px}
+.plate{aspect-ratio:1;background:var(--d2);border:1px solid var(--bd);position:relative;overflow:hidden;display:grid;place-items:center}
+.plate svg{width:86%}.plate::after{content:"STRONG";position:absolute;left:18px;bottom:10px;font:700 clamp(2rem,6vw,4.5rem) var(--hf);color:transparent;-webkit-text-stroke:1px #2c2c2c}
+@media(max-width:860px){.ab{grid-template-columns:1fr}.plate{aspect-ratio:4/3}}
+/* programs */
+#programs{background:var(--d1)}
+.pg{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;background:var(--bd);border:2px solid var(--bd)}
+.pc{grid-column:span 12;background:var(--bk);position:relative;overflow:hidden;min-height:340px;display:flex;flex-direction:column;justify-content:flex-end;padding:28px;isolation:isolate}
+@media(min-width:640px){.pc{grid-column:span 6}}
+@media(min-width:1000px){.pc:nth-child(1){grid-column:span 7}.pc:nth-child(2){grid-column:span 5}.pc:nth-child(n+3):nth-child(-n+5){grid-column:span 4}.pc:nth-child(6){grid-column:span 12;min-height:260px}}
+.pv{position:absolute;inset:0;z-index:-1;transition:transform .7s var(--ease),opacity .4s;opacity:.9}
+.pc:hover .pv{transform:scale(1.06)}
+.v0{background:repeating-linear-gradient(115deg,#141414 0 22px,#0b0b0b 22px 44px)}
+.v1{background:radial-gradient(circle at 80% 20%,#262600 0,transparent 55%),repeating-radial-gradient(circle at 80% 20%,#161616 0 2px,transparent 2px 26px)}
+.v2{background:linear-gradient(#1a1a1a 1px,transparent 1px) 0 0/100% 34px,linear-gradient(90deg,#1a1a1a 1px,transparent 1px) 0 0/34px 100%}
+.v3{background:repeating-linear-gradient(0deg,#121212 0 14px,#0a0a0a 14px 28px)}
+.v4{background:radial-gradient(#242424 1.5px,transparent 1.6px) 0 0/22px 22px}
+.v5{background:repeating-linear-gradient(90deg,#111 0 60px,#0a0a0a 60px 120px)}
+.pc::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(transparent 30%,#000 95%)}
+.pn{position:absolute;top:22px;left:28px;font:700 .8rem var(--hf);color:var(--y);letter-spacing:.14em}
+.pi{position:absolute;top:16px;right:22px;width:44px;height:44px;color:#333;transition:color .3s}.pc:hover .pi{color:var(--y)}
+.pc h3{font-size:clamp(1.5rem,2.6vw,2.2rem);margin-bottom:10px}.pc p{color:var(--mut);font-size:.95rem;max-width:44ch}
+.pc .ln{display:inline-flex;margin-top:18px;font:700 .75rem var(--hf);letter-spacing:.14em;text-transform:uppercase;border:0;background:none;cursor:pointer;padding:6px 0;border-bottom:2px solid var(--y);align-self:flex-start;transition:padding .3s var(--ease)}
+.pc:hover .ln{padding-right:24px}
+/* schedule */
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-bottom:2px}
+.tabs button{flex:1 0 auto;min-width:72px;min-height:56px;background:var(--d2);border:0;border-bottom:3px solid var(--bd);font:700 .8rem var(--hf);letter-spacing:.14em;text-transform:uppercase;color:var(--mut);cursor:pointer;transition:.25s}
+.tabs button:hover{color:#fff}.tabs button[aria-selected=true]{background:var(--y);color:#000;border-color:var(--y)}
+.rows{border:1px solid var(--bd)}
+.row{display:grid;grid-template-columns:150px 1fr 200px 160px;gap:20px;align-items:center;padding:22px 24px;border-bottom:1px solid var(--bd);animation:in .5s var(--ease) both;transition:background .2s}
+.row:last-child{border:0}.row:hover{background:var(--d2)}
+.row b{font:700 1.15rem var(--hf)}.row .t{color:var(--y)}.row .c{font:500 .72rem var(--hf);letter-spacing:.14em;text-transform:uppercase;border:1px solid var(--bd);padding:6px 10px;justify-self:start}
+.row span{color:var(--mut);font-size:.9rem}
+.note{margin-top:18px;font-size:.82rem;color:var(--mut)}
+@media(max-width:760px){.row{grid-template-columns:1fr auto;gap:6px 12px;padding:18px}.row .t{grid-row:1}.row b{grid-column:1/-1;grid-row:2}.row .c{grid-row:1;grid-column:2}.row span{grid-column:1/-1}}
+/* why */
+.wy{display:grid;grid-template-columns:1fr 1.3fr;gap:clamp(32px,6vw,96px)}
+.wy h2{position:sticky;top:110px;align-self:start;font-size:clamp(2.6rem,6.5vw,5.6rem)}
+.wi{display:grid;grid-template-columns:56px 1fr;gap:18px;padding:26px 0;border-top:1px solid var(--bd)}
+.wi:last-child{border-bottom:1px solid var(--bd)}
+.wi i{font:700 .8rem var(--hf);font-style:normal;color:var(--y);padding-top:6px}.wi h3{font-size:1.5rem;margin-bottom:8px}.wi p{color:var(--mut);max-width:50ch}
+@media(max-width:860px){.wy{grid-template-columns:1fr}.wy h2{position:static}}
+/* plans */
+#membership{background:var(--d1)}
+.pl{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:stretch}
+.pn2{background:var(--bk);border:1px solid var(--bd);padding:36px 30px;display:flex;flex-direction:column;position:relative}
+.pn2.f{border-color:var(--y);background:#0b0b00}
+.tag{position:absolute;top:-1px;right:-1px;background:var(--y);color:#000;font:700 .68rem var(--hf);letter-spacing:.14em;padding:7px 12px;text-transform:uppercase}
+.pn2 h3{font-size:1.1rem;letter-spacing:.1em;color:var(--mut)}.pn2.f h3{color:var(--y)}
+.pr{font:700 clamp(2.8rem,5vw,4rem) var(--hf);letter-spacing:-.03em;margin:18px 0 4px}.du{color:var(--mut);font-size:.9rem;padding-bottom:22px;border-bottom:1px solid var(--bd)}
+.pn2 ul{list-style:none;padding:0;margin:24px 0 32px;display:grid;gap:12px;flex:1}
+.pn2 li{display:flex;gap:12px;font-size:.95rem}.pn2 li::before{content:"";flex:none;width:10px;height:2px;background:var(--y);margin-top:11px}
+.pn2 .btn{width:100%}
+@media(max-width:900px){.pl{grid-template-columns:1fr}}
+/* faq */
+.fq{max-width:900px}.fi{border-top:1px solid var(--bd)}.fi:last-child{border-bottom:1px solid var(--bd)}
+.fi button{width:100%;display:flex;justify-content:space-between;align-items:center;gap:20px;text-align:left;background:none;border:0;padding:26px 0;cursor:pointer;font:700 clamp(1.05rem,2vw,1.4rem) var(--hf);text-transform:uppercase;letter-spacing:-.01em}
+.fi button:hover{color:var(--y)}
+.fi button i{flex:none;width:22px;height:22px;position:relative}
+.fi button i::before,.fi button i::after{content:"";position:absolute;background:var(--y);left:0;top:10px;width:22px;height:2px;transition:transform .35s var(--ease)}
+.fi button i::after{transform:rotate(90deg)}.fi button[aria-expanded=true] i::after{transform:rotate(0)}
+.fa{display:grid;grid-template-rows:0fr;transition:grid-template-rows .4s var(--ease)}.fa>div{overflow:hidden}.fa p{color:var(--mut);padding:0 40px 26px 0;max-width:62ch}
+.fi.o .fa{grid-template-rows:1fr}
+/* contact */
+#contact{background:var(--d1)}
+.ct{display:grid;grid-template-columns:1fr 1.15fr;gap:clamp(32px,6vw,96px)}
+.ct h2{font-size:clamp(2.6rem,6.5vw,5.4rem)}.ct .lead{margin:22px 0 36px}
+.inf{display:grid;gap:0;border-top:1px solid var(--bd);margin-bottom:30px}.inf div{display:flex;justify-content:space-between;gap:20px;padding:15px 0;border-bottom:1px solid var(--bd);font-size:.95rem}.inf span{color:var(--mut)}.inf b{font-weight:500;text-align:right}
+form{background:var(--bk);border:1px solid var(--bd);padding:clamp(22px,4vw,44px);display:grid;gap:20px;border-top:3px solid var(--y)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+label{display:grid;gap:8px;font:500 .74rem var(--hf);letter-spacing:.14em;text-transform:uppercase}
+input,select,textarea{background:var(--d2);border:1px solid var(--bd);border-radius:0;padding:14px;min-height:50px;font-size:1rem;letter-spacing:0;text-transform:none;width:100%;transition:border-color .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--y);outline:none}
+[aria-invalid=true]{border-color:#ff5a4f}.er{color:#ff8a80;font:400 .8rem var(--bf);letter-spacing:0;text-transform:none;min-height:0}
+select option{background:#101010}
+textarea{min-height:100px;resize:vertical}
+.ok{text-align:center;padding:40px 10px}.ok h3{font-size:2rem;margin-bottom:12px}.ok p{color:var(--mut);margin-bottom:24px}
+.toast{font-size:.85rem;color:var(--y);margin-top:12px;min-height:1.3em}
+@media(max-width:860px){.ct{grid-template-columns:1fr}.g2{grid-template-columns:1fr}}
+/* footer */
+footer{padding:64px 0 36px;border-top:1px solid var(--bd)}
+.ft{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:40px;margin-bottom:48px}
+.ft p{color:var(--mut);max-width:34ch;margin-top:16px}.ft h4{font:700 .75rem var(--hf);letter-spacing:.16em;text-transform:uppercase;color:var(--y);margin-bottom:16px}
+.ft li{list-style:none;padding:0;margin-bottom:8px;color:var(--mut);font-size:.92rem}.ft ul{padding:0}.ft a:hover{color:#fff}
+.cp{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-top:24px;border-top:1px solid var(--bd);font-size:.8rem;color:var(--mut)}
+@media(max-width:760px){.ft{grid-template-columns:1fr 1fr}.ft>div:first-child{grid-column:1/-1}}
+.rv{opacity:0;transform:translateY(28px);transition:opacity .8s var(--ease),transform .8s var(--ease)}.rv.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.rv,.ld{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<header id="hd"><div class="wrap nv">
+<a href="#home" class="logo" aria-label="AIROBICS GYM home"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 28 16 3l14 25h-6.2L16 14 8.2 28z" fill="#ff0"/><rect x="9" y="22" width="14" height="3" fill="#ff0"/></svg><span>AIROBICS <b>GYM</b></span></a>
+<nav class="links" id="links" aria-label="Main"></nav>
+<a href="#contact" class="btn p m" data-enq>Join now</a>
+<button class="bg" id="bg" aria-label="Toggle menu" aria-expanded="false" aria-controls="links"><i></i></button>
+</div></header>
+
+<main>
+<section id="home">
+<div class="photo" id="photo"></div>
+<div class="ghost" aria-hidden="true">AIR</div>
+<svg class="art" viewBox="0 0 800 520" aria-hidden="true"><defs><linearGradient id="gm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3a3a"/><stop offset=".5" stop-color="#151515"/><stop offset="1" stop-color="#050505"/></linearGradient></defs>
+<g transform="rotate(-14 400 260)"><rect x="20" y="246" width="760" height="28" fill="#2a2a2a"/><rect x="20" y="252" width="760" height="4" fill="#4a4a4a"/>
+<g fill="url(#gm)" stroke="#2f2f2f"><rect x="150" y="80" width="46" height="360"/><rect x="204" y="120" width="34" height="280"/><rect x="246" y="160" width="26" height="200"/><rect x="604" y="80" width="46" height="360"/><rect x="562" y="120" width="34" height="280"/><rect x="528" y="160" width="26" height="200"/></g>
+<rect x="150" y="80" width="46" height="8" fill="#ff0"/><rect x="604" y="80" width="46" height="8" fill="#ff0"/><rect x="100" y="236" width="40" height="48" fill="#222"/><rect x="660" y="236" width="40" height="48" fill="#222"/></g></svg>
+<div class="wrap"><div class="hero">
+<div class="eb ld" style="animation-delay:.05s">Your fitness. Your next level.</div>
+<h1><span class="ld" style="animation-delay:.15s">Forge your</span><span class="y ld" style="animation-delay:.28s">strongest</span><span class="ol ld" style="animation-delay:.41s">self.</span></h1>
+<p class="ld" style="animation-delay:.55s">Train with purpose. Build real strength. Find out what you're capable of, one session at a time.</p>
+<div class="cta ld" style="animation-delay:.68s"><a class="btn p" href="#contact" data-enq>Start your journey</a><a class="btn l" href="#programs">Explore programs</a></div>
+<div class="facts ld" style="animation-delay:.8s" id="facts"></div>
+</div></div>
+<div class="sc" aria-hidden="true">SCROLL</div>
+</section>
+
+<div class="strip"><div class="wrap" id="strip"></div></div>
+
+<section id="about"><div class="wrap ab">
+<div class="rv"><div class="eb">About the gym</div><h2>Less noise.<br><span class="y">More iron.</span></h2>
+<p class="lead">AIROBICS is a training floor built around effort, not appearances. Lift heavy, move well, sweat in a group class, or work one-to-one with a coach. Pick a lane, show up, and we'll help you stay consistent.</p>
+<a class="btn p" href="#contact" data-enq>Book a visit</a></div>
+<div class="plate rv" role="img" aria-label="Illustration of a weight plate"><svg viewBox="0 0 400 400" aria-hidden="true"><circle cx="200" cy="200" r="180" fill="#151515" stroke="#2a2a2a" stroke-width="3"/><circle cx="200" cy="200" r="140" fill="none" stroke="#222" stroke-width="2"/><circle cx="200" cy="200" r="60" fill="#080808" stroke="#ff0" stroke-width="3"/><circle cx="200" cy="200" r="16" fill="#000" stroke="#333"/><path id="cp" d="M200 200m-160 0a160 160 0 1 1 320 0a160 160 0 1 1-320 0" fill="none"/><text font-family="Space Grotesk,Arial" font-weight="700" font-size="22" letter-spacing="9" fill="#ff0"><textPath href="#cp">AIROBICS GYM · TRAIN HARD · STAY STRONG ·</textPath></text></svg></div>
+</div></section>
+
+<section id="programs"><div class="wrap">
+<div class="sh rv"><h2>Training<br><span class="y">programs</span></h2><p>Six ways to train. Not sure where to start? Tell us your goal and we'll point you to the right one.</p></div>
+<div class="pg" id="pg"></div></div></section>
+
+<section id="schedule"><div class="wrap">
+<div class="sh rv"><h2>Weekly<br><span class="y">schedule</span></h2><p>Pick a day to see what's on the floor.</p></div>
+<div class="tabs" role="tablist" aria-label="Days" id="tabs"></div>
+<div class="rows" id="rows" role="tabpanel" aria-live="polite"></div>
+<p class="note">Demo timings. Replace CONFIG schedule data with the gym's real timetable before publishing.</p>
+</div></section>
+
+<section id="why"><div class="wrap wy">
+<h2 class="rv">Why<br>train<br><span class="y">here</span></h2><div id="wy" class="rv"></div></div></section>
+
+<section id="membership"><div class="wrap">
+<div class="sh rv"><h2>Membership<br><span class="y">plans</span></h2><p>Demo pricing in INR. Choose a plan to send an enquiry. No payment is taken on this site.</p></div>
+<div class="pl" id="pl"></div></div></section>
+
+<section id="faq"><div class="wrap">
+<div class="sh rv"><h2>Good<br><span class="y">questions</span></h2></div>
+<div class="fq" id="fq"></div></div></section>
+
+<section id="contact"><div class="wrap ct">
+<div class="rv"><h2>Ready?<br><span class="y">Join the floor.</span></h2>
+<p class="lead">Send an enquiry and the team will get back to you about memberships, trial sessions and timings.</p>
+<div class="inf" id="inf"></div>
+<a class="btn l" id="wa" href="#contact" rel="noopener">Enquire on WhatsApp</a><div class="toast" id="wat" role="status"></div></div>
+<form id="fm" novalidate class="rv" aria-label="Membership enquiry">
+<div class="g2"><label>Full name<input name="name" autocomplete="name" required><span class="er"></span></label>
+<label>Phone number<input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="e.g. 98765 43210" required><span class="er"></span></label></div>
+<div class="g2"><label>Interested program<select name="program" id="sp" required></select><span class="er"></span></label>
+<label>Preferred contact<select name="method"><option>Phone call</option><option>WhatsApp</option><option>Visit the gym</option></select></label></div>
+<label>Message (optional)<textarea name="msg" id="msg"></textarea></label>
+<button class="btn p" id="sb" type="submit">Send enquiry</button>
+</form></div></section>
+</main>
+
+<footer><div class="wrap">
+<div class="ft"><div><a href="#home" class="logo"><span>AIROBICS <b>GYM</b></span></a><p id="tg"></p></div>
+<div><h4>Explore</h4><ul id="fl"></ul></div><div><h4>Find us</h4><ul id="fc"></ul></div></div>
+<div class="cp"><span id="cr"></span><span>Demo website. Content is placeholder.</span></div></div></footer>
+
+<script>
+/* ============ EDIT ME: all business details live here ============ */
+const CONFIG={
+ name:"AIROBICS GYM",
+ tagline:"Strength, aerobics and coaching. Train hard, stay consistent.",
+ location:"[Add gym address, city]",      // REPLACE
+ phone:"",                                  // REPLACE e.g. "+91 98765 43210"
+ email:"",                                  // REPLACE
+ whatsapp:"",                               // REPLACE: digits with country code, e.g. "919876543210"
+ hours:[["Mon – Sat","6:00 AM – 10:00 PM"],["Sunday","7:00 AM – 12:00 PM"]], // DEMO hours
+ social:[["Instagram",""],["Facebook",""],["YouTube",""]], // add URLs; empty ones are hidden
+ images:{hero:""} // optional: URL or data: URI of a hero photo (shown dimmed behind the artwork)
+};
+const NAV=[["Home","home"],["About","about"],["Programs","programs"],["Schedule","schedule"],["Membership","membership"],["Contact","contact"]];
+const FACTS=[["Strength","Free weights & racks"],["Group","Aerobics classes"],["1-to-1","Personal coaching"]];
+const HIGHLIGHTS=[["Strength training","Racks, plates and dumbbells for heavy, honest work."],["Group fitness","High-energy aerobics and conditioning with company."],["Personal training","A coach, a plan and someone watching your form."],["Functional fitness","Move better for sport, work and everyday life."]];
+const ICONS=["M4 20V4m16 16V4M1 12h22M6 8v8m12-8v8","M12 21s-8-5.3-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.7-8 11-8 11z","M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 3.6-7 8-7s8 3 8 7","M3 17l6-6 4 4 8-8m0 0h-6m6 0v6","M4 20h16M7 20l2-12h6l2 12M10 8a2 2 0 1 1 4 0","M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"];
+const PROGRAMS=[
+ {name:"Strength & Conditioning",desc:"Barbell and dumbbell work with progressive overload. Get stronger on purpose."},
+ {name:"Aerobics & Group Fitness",desc:"Music, pace and a room full of people pushing the same hour."},
+ {name:"Personal Training",desc:"One-to-one coaching built around your body, schedule and goal."},
+ {name:"Functional Training",desc:"Compound, full-body movement that carries over to real life."},
+ {name:"Weight Management",desc:"Structured training and habits to lose fat and keep it off."},
+ {name:"General Fitness",desc:"New to the gym or coming back? Start here, at your own pace."}];
+const D=(t,n,c,i="Instructor TBA")=>({t,n,c,i});
+const SCHEDULE={Mon:[D("6:30 AM","Strength Basics","Strength"),D("8:00 AM","Aerobics Burn","Group"),D("6:00 PM","Functional Circuit","Functional"),D("7:30 PM","Open Floor Coaching","Personal")],
+Tue:[D("6:30 AM","Aerobics Burn","Group"),D("9:00 AM","Weight Management Lab","Weight"),D("6:00 PM","Strength & Conditioning","Strength")],
+Wed:[D("6:30 AM","Functional Circuit","Functional"),D("6:00 PM","Aerobics Burn","Group"),D("7:30 PM","Personal Training Slots","Personal")],
+Thu:[D("6:30 AM","Strength & Conditioning","Strength"),D("8:00 AM","Beginner Orientation","General"),D("6:00 PM","Weight Management Lab","Weight")],
+Fri:[D("6:30 AM","Aerobics Burn","Group"),D("6:00 PM","Functional Circuit","Functional"),D("7:30 PM","Strength Basics","Strength")],
+Sat:[D("7:00 AM","Group Conditioning","Group"),D("9:00 AM","Strength & Conditioning","Strength"),D("11:00 AM","Personal Training Slots","Personal")],
+Sun:[D("8:00 AM","Mobility & Recovery","General"),D("10:00 AM","Open Floor","General")]};
+const WHY=[["Focused floor","Room to lift, equipment that's maintained, and a space built for training."],["Structured workouts","Programs with a plan, so every session has a point."],["A community that shows up","Train alongside people with the same goals and the same early alarms."],["Every starting point","Beginner or experienced, there's a program that fits your level."],["Flexible memberships","Choose a duration that suits you, with no pressure to commit long term."],["Goal-first coaching","Fat loss, strength, stamina or confidence. We train toward your goal."]];
+const PLANS=[ // DEMO prices, replace before publishing
+ {name:"BASIC",price:1500,per:"per month",feat:["Gym floor access","Cardio & free weights","Locker access","Beginner orientation"],cta:"Choose Basic"},
+ {name:"PRO",price:3900,per:"3 months",rec:true,feat:["Everything in Basic","Unlimited group classes","Monthly progress check","Structured workout plan"],cta:"Choose Pro"},
+ {name:"PREMIUM",price:7200,per:"6 months",feat:["Everything in Pro","Personal training sessions","Weight management plan","Priority class booking"],cta:"Choose Premium"}];
+const FAQS=[["Which membership options are available?","Basic, Pro and Premium plans, each with a different duration and set of inclusions. Check the plans above, then enquire to confirm current prices."],["Is personal training available?","Yes. One-to-one coaching is available as a program and is included in the Premium plan."],["Can beginners join?","Absolutely. Our beginner orientation and general fitness program are designed for first-timers."],["How can I enquire about a membership?","Use the enquiry form below, or message us on WhatsApp. We'll reply using your preferred contact method."],["What training programs are offered?","Strength & conditioning, aerobics and group fitness, personal training, functional training, weight management and general fitness."]];
+/* ================================================================== */
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const fmt=n=>"₹"+n.toLocaleString("en-IN");
+document.title=CONFIG.name+" | Strength, Aerobics & Personal Training";
+if(CONFIG.images.hero)$("#photo").style.backgroundImage=`url("${CONFIG.images.hero}")`;
+$("#links").innerHTML=NAV.map(([l,id])=>`<a href="#${id}">${l}</a>`).join("");
+$("#facts").innerHTML=FACTS.map(([a,b])=>`<div>${a}<small>${b}</small></div>`).join("");
+$("#strip").innerHTML=HIGHLIGHTS.map(([a,b])=>`<div class="rv"><h3>${a}</h3><p>${b}</p></div>`).join("");
+$("#pg").innerHTML=PROGRAMS.map((p,i)=>`<article class="pc"><div class="pv v${i}"></div><span class="pn">0${i+1}</span><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[i]}"/></svg><h3>${p.name}</h3><p>${p.desc}</p><button class="ln" data-enq data-prog="${p.name}">Enquire now</button></article>`).join("");
+$("#wy").innerHTML=WHY.map(([a,b],i)=>`<div class="wi"><i>0${i+1}</i><div><h3>${a}</h3><p>${b}</p></div></div>`).join("");
+$("#pl").innerHTML=PLANS.map(p=>`<article class="pn2 rv${p.rec?" f":""}">${p.rec?'<span class="tag">Recommended</span>':""}<h3>${p.name}</h3><div class="pr">${fmt(p.price)}</div><div class="du">${p.per}</div><ul>${p.feat.map(f=>`<li>${f}</li>`).join("")}</ul><button class="btn${p.rec?" p":""}" data-enq data-plan="${p.name}">${p.cta}</button></article>`).join("");
+$("#fq").innerHTML=FAQS.map(([q,a],i)=>`<div class="fi"><h3 style="font-size:inherit"><button aria-expanded="false" aria-controls="fa${i}" id="fb${i}">${q}<i></i></button></h3><div class="fa" id="fa${i}" role="region" aria-labelledby="fb${i}"><div><p>${a}</p></div></div></div>`).join("");
+$("#sp").innerHTML='<option value="">Select a program</option>'+PROGRAMS.map(p=>`<option>${p.name}</option>`).join("");
+const row=(a,b)=>`<div><span>${a}</span><b>${b}</b></div>`;
+$("#inf").innerHTML=row("Location",CONFIG.location)+CONFIG.hours.map(h=>row(h[0],h[1])).join("")+row("Phone",CONFIG.phone||"[Add phone number]")+(CONFIG.email?row("Email",CONFIG.email):"");
+$("#tg").textContent=CONFIG.tagline;
+$("#fl").innerHTML=NAV.map(([l,id])=>`<li><a href="#${id}">${l}</a></li>`).join("");
+const soc=CONFIG.social.filter(s=>s[1]).map(s=>`<li><a href="${s[1]}" target="_blank" rel="noopener">${s[0]}</a></li>`).join("");
+$("#fc").innerHTML=`<li>${CONFIG.location}</li><li>${CONFIG.hours[0].join(": ")}</li><li>${CONFIG.phone||"[Add phone number]"}</li>${soc}`;
+$("#cr").textContent=`© ${new Date().getFullYear()} ${CONFIG.name}. All rights reserved.`;
+/* nav */
+const hd=$("#hd"),bg=$("#bg");
+const setMenu=o=>{hd.classList.toggle("o",o);bg.setAttribute("aria-expanded",o)};
+bg.onclick=()=>setMenu(!hd.classList.contains("o"));
+$("#links").onclick=e=>{if(e.target.closest("a"))setMenu(false)};
+addEventListener("keydown",e=>{if(e.key==="Escape"){setMenu(false);bg.focus()}});
+const sc=()=>hd.classList.toggle("s",scrollY>30);sc();addEventListener("scroll",sc,{passive:true});
+const links=$$("#links a");
+const spy=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)links.forEach(a=>a.classList.toggle("on",a.getAttribute("href")==="#"+e.target.id))}),{rootMargin:"-45% 0px -50% 0px"});
+NAV.forEach(([,id])=>{const s=document.getElementById(id);s&&spy.observe(s)});
+/* reveal */
+const ro=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("in");ro.unobserve(e.target)}}),{threshold:.12});
+$$(".rv").forEach(el=>ro.observe(el));
+/* schedule */
+const days=Object.keys(SCHEDULE),tabs=$("#tabs");
+tabs.innerHTML=days.map(d=>`<button role="tab" aria-selected="false" data-d="${d}" tabindex="-1">${d}</button>`).join("");
+function showDay(d){$$("button",tabs).forEach(b=>{const on=b.dataset.d===d;b.setAttribute("aria-selected",on);b.tabIndex=on?0:-1});
+$("#rows").innerHTML=SCHEDULE[d].map((r,i)=>`<div class="row" style="animation-delay:${i*60}ms"><b class="t">${r.t}</b><b>${r.n}</b><span>${r.i}</span><em class="c" style="font-style:normal">${r.c}</em></div>`).join("")}
+tabs.onclick=e=>{const b=e.target.closest("button");b&&showDay(b.dataset.d)};
+tabs.onkeydown=e=>{const i=days.indexOf($("[aria-selected=true]",tabs).dataset.d);const n=e.key==="ArrowRight"?i+1:e.key==="ArrowLeft"?i-1:null;if(n!==null){const d=days[(n+days.length)%days.length];showDay(d);$(`[data-d=${d}]`,tabs).focus()}};
+const todayIdx=(new Date().getDay()+6)%7;showDay(days[todayIdx]);
+/* faq */
+$("#fq").onclick=e=>{const b=e.target.closest("button");if(!b)return;const it=b.closest(".fi"),o=!it.classList.contains("o");$$(".fi.o").forEach(x=>{x.classList.remove("o");$("button",x).setAttribute("aria-expanded","false")});if(o){it.classList.add("o");b.setAttribute("aria-expanded","true")}};
+/* enquiry buttons */
+document.addEventListener("click",e=>{const b=e.target.closest("[data-enq]");if(!b)return;
+if(b.dataset.prog)$("#sp").value=b.dataset.prog;
+if(b.dataset.plan)$("#msg").value=`I'd like to know more about the ${b.dataset.plan} plan.`;
+if(b.tagName==="BUTTON"){$("#contact").scrollIntoView({behavior:"smooth"});setTimeout(()=>$("#fm [name=name]").focus({preventScroll:true}),500)}});
+/* whatsapp */
+const wa=$("#wa");
+if(CONFIG.whatsapp){wa.href=`https://wa.me/${CONFIG.whatsapp.replace(/\D/g,"")}?text=${encodeURIComponent("Hi "+CONFIG.name+", I'd like to enquire about a membership.")}`;wa.target="_blank"}
+else wa.onclick=e=>{e.preventDefault();$("#wat").textContent="WhatsApp number not set yet. Add it to CONFIG.whatsapp."};
+/* form: swap submitInquiry for a real API call (fetch/POST) when a backend exists */
+async function submitInquiry(data){await new Promise(r=>setTimeout(r,900));return{ok:true}}
+const fm=$("#fm");
+const rules={name:v=>v.trim().length>=2||"Enter your full name.",phone:v=>/^\+?[\d\s-]{10,14}$/.test(v.trim())||"Enter a valid phone number (10+ digits).",program:v=>!!v||"Select a program."};
+fm.onsubmit=async e=>{e.preventDefault();let bad=0;
+for(const k in rules){const f=fm.elements[k],r=rules[k](f.value),er=f.parentElement.querySelector(".er");f.setAttribute("aria-invalid",r!==true);er.textContent=r===true?"":r;if(r!==true&&!bad++)f.focus()}
+if(bad)return;const sb=$("#sb");sb.disabled=true;sb.textContent="Sending…";
+try{const d=Object.fromEntries(new FormData(fm));await submitInquiry(d);
+fm.innerHTML=`<div class="ok" role="status"><h3>Enquiry received <span class="y">(demo)</span></h3><p>Thanks, ${d.name.split(" ")[0]}. This is a demo form, so nothing was sent. Connect a backend to receive real enquiries.</p><button class="btn" type="button" onclick="location.reload()">Send another</button></div>`}
+catch(x){sb.disabled=false;sb.textContent="Send enquiry";alert("Something went wrong. Please try again.")}};
+fm.oninput=e=>{if(e.target.hasAttribute("aria-invalid")){e.target.removeAttribute("aria-invalid");const er=e.target.parentElement.querySelector(".er");er&&(er.textContent="")}};
+</script>
+</body>
+</html>
