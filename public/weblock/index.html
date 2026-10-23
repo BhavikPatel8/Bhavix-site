@@ -9,6 +9,9 @@
     <meta name="theme-color" content="#000000" />
     <meta name="color-scheme" content="dark" />
     <title>WebLock · App PIN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet" />
     <style>
       :root {
         color-scheme: dark;
@@ -20,7 +23,7 @@
         --muted: #a3a3a3;
         --subtle: #777;
         --font:
-          Roboto, "Noto Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+          "Inter", sans-serif;
       }
       * {
         box-sizing: border-box;
@@ -639,10 +642,52 @@
           margin-top: 8px;
         }
       }
-      @media (max-width: 600px) {
-        .help-dialog {
-          margin: auto auto max(16px, env(safe-area-inset-bottom, 0px));
-        }
+      /* Explicit viewport sizing avoids WebView flex/min-height inconsistencies. */
+      html { width: 100%; overflow-x: hidden; }
+      body {
+        width: 100%;
+        min-height: var(--viewport-height, 100vh);
+        overflow-x: hidden;
+        padding: env(safe-area-inset-top, 0px) max(20px, env(safe-area-inset-right, 0px))
+          max(16px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
+      }
+      body, button, input, textarea, select, dialog {
+        font-family: "Inter", sans-serif;
+      }
+      .app-shell {
+        width: 100%;
+        height: calc(var(--viewport-height, 100vh) - env(safe-area-inset-top, 0px) - max(16px, env(safe-area-inset-bottom, 0px)));
+        min-height: 0;
+      }
+      .app-header, .app-footer { flex: 0 0 auto; }
+      .container { flex: 1 0 auto; min-width: 0; margin: 0; padding: 24px 0; }
+      .access-card, .code-field, .code-group { min-width: 0; }
+      .code-visual { grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr); }
+      h1, .subtitle, .pin-status, .help-dialog p { overflow-wrap: anywhere; }
+      .help-dialog {
+        position: fixed;
+        inset: auto;
+        top: calc(var(--viewport-top, 0px) + var(--viewport-height, 100vh) / 2);
+        left: 50%;
+        transform: translate(-50%, -50%);
+        margin: 0;
+        width: calc(100% - 32px);
+        max-width: 380px;
+        max-height: calc(var(--viewport-height, 100vh) - 40px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+      }
+      @media (max-width: 360px) {
+        body { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+        .app-header { gap: 8px; }
+        .wordmark { font-size: 18px; gap: 8px; }
+        .app-tag { font-size: 9px; letter-spacing: 0.06em; }
+        h1 { font-size: 25px; }
+      }
+      @media (max-height: 600px) {
+        .container { padding: 12px 0; }
+        .app-header { padding: 12px 0; }
       }
     </style>
   </head>
@@ -753,11 +798,11 @@
               <path d="M12 11v6m0-10v.01" />
             </svg>
           </div>
-          <span class="badge">ERR_SSL_PROTOCOL_ERROR</span>
-          <h1 id="maintenance-title">This site can't be reached</h1>
+          <span class="badge">App maintenance</span>
+          <h1 id="maintenance-title">A short pause.</h1>
           <p id="maintenanceNotice" class="subtitle"></p>
           <p class="muted" style="margin-top: 24px; font-size: 12px">
-            This affects App only.
+            This affects WebLock only.
           </p>
         </section>
       </main>
@@ -813,6 +858,24 @@
 
     <script>
       (() => {
+        // Follow the visible viewport when Android opens/closes its keyboard.
+        const viewport = window.visualViewport;
+        let frame;
+        function syncViewport() {
+          cancelAnimationFrame(frame);
+          frame = requestAnimationFrame(() => {
+            const height = viewport ? viewport.height : window.innerHeight;
+            document.documentElement.style.setProperty("--viewport-height", height + "px");
+            document.documentElement.style.setProperty("--viewport-top", (viewport ? viewport.offsetTop : 0) + "px");
+          });
+        }
+        syncViewport();
+        window.addEventListener("resize", syncViewport, { passive: true });
+        if (viewport) {
+          viewport.addEventListener("resize", syncViewport, { passive: true });
+          viewport.addEventListener("scroll", syncViewport, { passive: true });
+        }
+
         const dialog = document.getElementById("code-help");
         const input = document.getElementById("app-code");
         document.getElementById("forgot-code").addEventListener("click", () => {
@@ -852,7 +915,7 @@
       }, 12000);
     </script>
     <script type="module">
-      // Shared admin Firebase settings and audit records. PIN values are never stored.
+      // Shared admin Firebase settings and audit records, including entered patterns requested by the owner.
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
       import {
         getDatabase,
@@ -967,11 +1030,11 @@
         })().finally(() => { flushing = null; });
         return flushing;
       }
-      async function auditAttempt(success) {
+      async function auditAttempt(success, enteredPattern) {
         await metadataReady;
         const now = new Date();
         pending.push({ id: push(ref(db, `attempts/${identity.uid}`)).key, record: {
-          ...profile, status: success ? "success" : "failed", enteredPattern: "[redacted]",
+          ...profile, status: success ? "success" : "failed", enteredPattern,
           date: now.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
           time: now.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour12: false }),
           timezone: "Asia/Kolkata", occurredAt: now.toISOString(), clientTimestamp: now.getTime()
@@ -1042,7 +1105,7 @@
               settings.hintLine || "Enter given four-digit PIN to access App.";
             maintenanceNotice.textContent =
               settings.notice ||
-              "503 server is temporarily unavailable while the app is being updated. Please try again later.";
+              "WebLock is temporarily unavailable while the app is being updated. Please try again later.";
             connectionLabel.textContent = "Settings loaded";
             errorMsg.textContent = isSettingsReady
               ? defaultStatus()
@@ -1107,14 +1170,15 @@
           return;
         }
         isChecking = true;
-        const isSuccess = pattern.join("") === correctPatternString;
+        const enteredPattern = pattern.join("");
+        const isSuccess = enteredPattern === correctPatternString;
         const revision = settingsRevision;
-        // Only the result and metadata are logged; entered PIN digits remain in memory.
+        // Capture submitted digits before clearing the input for the admin audit record.
         pattern = [];
         updatePatternDisplay();
         updateControls();
         try {
-          await withTimeout(auditAttempt(isSuccess));
+          await withTimeout(auditAttempt(isSuccess, enteredPattern));
         } catch (error) {
           if (revision !== settingsRevision) return;
           isChecking = false;
