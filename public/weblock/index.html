@@ -798,11 +798,11 @@
               <path d="M12 11v6m0-10v.01" />
             </svg>
           </div>
-          <span class="badge">App maintenance</span>
-          <h1 id="maintenance-title">A short pause.</h1>
+          <span class="badge">ERR_SSL_PROTOCOL_ERROR</span>
+          <h1 id="maintenance-title">This site can't be reached</h1>
           <p id="maintenanceNotice" class="subtitle"></p>
           <p class="muted" style="margin-top: 24px; font-size: 12px">
-            This affects WebLock only.
+            This affects App only.
           </p>
         </section>
       </main>
@@ -1105,7 +1105,7 @@
               settings.hintLine || "Enter given four-digit PIN to access App.";
             maintenanceNotice.textContent =
               settings.notice ||
-              "WebLock is temporarily unavailable while the app is being updated. Please try again later.";
+              "503 server is temporarily unavailable while the app is being updated. Please try again later.";
             connectionLabel.textContent = "Settings loaded";
             errorMsg.textContent = isSettingsReady
               ? defaultStatus()
