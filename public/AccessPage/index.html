@@ -76,10 +76,6 @@ html, body {
     100% { transform: translate(40px, 60px) scale(1.15); }
 }
 
-/* Sparkles & Floating Hearts */
-/* Sparkles & Floating Hearts */
-/* Sparkles Layer & Container */
-/* Sparkles Layer & Container */
 /* Sparkles Layer & Container */
 #sparkleLayer {
     position: absolute;
@@ -238,7 +234,7 @@ html, body {
     transform: scale(0.96) translateY(0);
 }
 
-/* Button Custom Accents */
+/* Button Custom Accents — each button gets its own unique hover color */
 .btn-countdown {
     box-shadow: inset 0 0 0 rgba(56, 189, 248, 0);
 }
@@ -261,6 +257,22 @@ html, body {
 .btn-weebly:hover {
     box-shadow: 0 8px 25px rgba(255, 215, 0, 0.12), inset 3px 0 0 #ffd700;
     border-color: rgba(255, 215, 0, 0.3);
+}
+
+.btn-prayer {
+    box-shadow: inset 0 0 0 rgba(167, 139, 250, 0);
+}
+.btn-prayer:hover {
+    box-shadow: 0 8px 25px rgba(167, 139, 250, 0.15), inset 3px 0 0 #a78bfa;
+    border-color: rgba(167, 139, 250, 0.3);
+}
+
+.btn-crazymon {
+    box-shadow: inset 0 0 0 rgba(52, 211, 153, 0);
+}
+.btn-crazymon:hover {
+    box-shadow: 0 8px 25px rgba(52, 211, 153, 0.15), inset 3px 0 0 #34d399;
+    border-color: rgba(52, 211, 153, 0.3);
 }
 
 /* Inner elements */
@@ -357,13 +369,22 @@ html, body {
             </button>
 
          <!-- Button 4: Prayer Note -->
-         <button class="hub-btn btn-weebly" onclick="navigateTo('https://bhavix-site.web.app/documents')">
+         <button class="hub-btn btn-prayer" onclick="navigateTo('https://bhavix-site.web.app/documents')">
     <div class="btn-icon">📖</div>
     <div class="btn-content">
         <span class="btn-title">Prayer Note</span>
         <span class="btn-desc">Read and explore prayer notes.</span>
     </div>
 </button>
+
+            <!-- Button 5: Crazymon Base -->
+            <button class="hub-btn btn-crazymon" onclick="navigateTo('https://crazymon.web.app')">
+                <div class="btn-icon">🐼</div>
+                <div class="btn-content">
+                    <span class="btn-title">Crazymon Base</span>
+                    <span class="btn-desc">Explore our memories and feel the nostalgia ✨</span>
+                </div>
+            </button>
 
         </div>
 
@@ -394,18 +415,6 @@ function updateGreeting() {
     greetingEl.textContent = greetText;
 }
 updateGreeting();
-
-// ====================================
-// MAGICAL SPARKS GENERATOR
-// ====================================
-   
-// ====================================
-// MAGICAL SPARKS GENERATOR (FASTER SPEED)
-// ====================================
-   
-// ====================================
-// MAGICAL SPARKS GENERATOR (BULLETPROOF OPTIMIZATION)
-// ====================================
 
 // ====================================
 // MAGICAL SPARKS GENERATOR (BULLETPROOF FIXED)
